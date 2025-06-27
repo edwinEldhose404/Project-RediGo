@@ -1,0 +1,5 @@
+praw
+pymongo
+transformers
+torch
+sentencepiece
