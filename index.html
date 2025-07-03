@@ -3,75 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reddit News Summarizer</title>
+    <title>Reddit News Summarizer - ZZZ Style (Black & Yellow)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts: Space Mono for techy feel -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6; /* Light gray background */
+            font-family: 'Space Mono', monospace; /* Techy font */
+            background-color: #000000; /* Black background */
+            color: #ffffff; /* White text */
             display: flex;
             justify-content: center;
             align-items: flex-start; /* Align to top */
             min-height: 100vh;
             padding: 2rem;
+            overflow-y: auto; /* Allow scrolling for content */
         }
         .container {
-            background-color: #ffffff;
+            background-color: #1a1a1a; /* Dark gray/off-black */
             padding: 2.5rem;
-            border-radius: 1rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border-radius: 0.75rem; /* Slightly less rounded */
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2); /* Gold glow */
+            border: 1px solid #FFD700; /* Gold border */
             width: 100%;
-            max-width: 960px; /* Increased max-width for better content display */
+            max-width: 1024px; /* Increased max-width */
             margin-top: 2rem;
+            position: relative;
+            overflow: hidden; /* For potential future effects */
         }
+        /* Subtle scanline effect - keeping black for subtle texture */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(0, 0, 0, 0.1) 0px,
+                rgba(0, 0, 0, 0.1) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 0;
+        }
+
         .input-group {
             margin-bottom: 1.5rem;
         }
         label {
             display: block;
             margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #374151;
+            font-weight: 700;
+            color: #FFD700; /* Gold for labels */
         }
         input[type="text"], input[type="number"] {
             width: 100%;
             padding: 0.75rem;
-            border: 1px solid #d1d5db;
+            background-color: #0a0a0a; /* Darker input background */
+            border: 1px solid #FF8C00; /* Dark orange border */
             border-radius: 0.5rem;
             font-size: 1rem;
-            color: #374151;
-            transition: border-color 0.2s;
+            color: #ffffff; /* White text */
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
         input[type="text"]:focus, input[type="number"]:focus {
             outline: none;
-            border-color: #4f46e5; /* Indigo-600 */
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); /* Indigo-500 with alpha */
+            border-color: #FFD700; /* Gold on focus */
+            box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.4); /* Gold glow on focus */
         }
         button {
-            background-color: #4f46e5; /* Indigo-600 */
+            background-color: #FF8C00; /* Dark orange button */
             color: white;
-            padding: 0.75rem 1.5rem;
+            padding: 0.825rem 1.65rem; /* 10% larger padding */
             border-radius: 0.5rem;
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 1rem; /* Explicitly set font size to keep it constant */
             cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s;
-            border: none;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.2s, transform 0.1s, border-color 0.2s;
+            border: 2px solid #ffffff; /* Solid white border */
+            box-shadow: none; /* Removed default shadow */
             width: 100%;
+            text-transform: uppercase; /* ZZZ style */
+            letter-spacing: 0.05em;
         }
         button:hover {
-            background-color: #4338ca; /* Indigo-700 */
-            transform: translateY(-1px);
+            background-color: #E67A00; /* Darker orange */
+            transform: translateY(-2px);
+            border-color: #FFD700; /* Gold border on hover */
+            box-shadow: none; /* Ensure no shadow on hover */
         }
         button:active {
             transform: translateY(0);
-            box-shadow: none;
+            border-color: #ffffff; /* White border on active */
+            box-shadow: none; /* Ensure no shadow on active */
         }
         .loading-spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: #4f46e5;
+            border: 4px solid rgba(255, 215, 0, 0.2); /* Gold spinner */
+            border-left-color: #FFD700;
             border-radius: 50%;
             width: 30px;
             height: 30px;
@@ -84,57 +116,76 @@
             100% { transform: rotate(360deg); }
         }
         .results-section {
-            margin-top: 2rem;
-            border-top: 1px solid #e5e7eb;
-            padding-top: 2rem;
+            margin-top: 2.5rem;
+            border-top: 1px solid #FFD700; /* Gold separator */
+            padding-top: 2.5rem;
         }
         .post-card {
-            background-color: #f9fafb; /* Lightest gray */
+            background-color: #2a2a2a; /* Darker gray for contrast */
             padding: 1.5rem;
             border-radius: 0.75rem;
             margin-bottom: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e5e7eb;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.15); /* Subtle gold glow */
+            border: 1px solid #FF8C00; /* Dark orange border */
         }
         .post-card h3 {
-            font-size: 1.5rem;
+            font-size: 1.6rem;
             font-weight: 700;
-            color: #1f2937;
+            color: #FFD700; /* Gold for titles */
             margin-bottom: 0.75rem;
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.5); /* Subtle glow effect */
         }
         .post-card p {
-            color: #4b5563;
+            color: #e0e0e0; /* Lighter gray for body text */
             line-height: 1.6;
             margin-bottom: 0.5rem;
         }
         .post-card strong {
-            color: #1f2937;
+            color: #ffffff; /* White for strong text */
         }
         .comment-summary-section {
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px dashed #d1d5db;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px dashed #FF8C00; /* Dark orange dashed separator */
         }
         .comment-summary-section h4 {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #374151;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #FFD700; /* Gold for sub-titles */
             margin-bottom: 0.75rem;
         }
         .comment-detail {
-            background-color: #ffffff;
+            background-color: #1a1a1a; /* Same as container for nested elements */
             padding: 0.75rem;
             border-radius: 0.5rem;
             margin-bottom: 0.5rem;
-            border: 1px solid #e5e7eb;
+            border: 1px solid #FFD700; /* Gold border */
         }
         .error-message {
-            color: #ef4444; /* Red-500 */
-            background-color: #fee2e2; /* Red-100 */
+            color: #FF3131; /* Bright red for errors */
+            background-color: #330000; /* Dark red background */
             padding: 1rem;
             border-radius: 0.5rem;
             margin-top: 1rem;
             display: none;
+            border: 1px solid #FF3131;
+        }
+        /* Custom colors for sentiment and links */
+        .text-green-500 {
+            color: #39FF14; /* Neon green */
+        }
+        .text-red-500 {
+            color: #FF3131; /* Brighter red */
+        }
+        .text-gray-400 {
+            color: #B0B0B0; /* Lighter gray */
+        }
+        .text-yellow-500 { /* For links */
+            color: #FFD700; /* Gold for links */
+        }
+        .hover\:underline:hover {
+            text-decoration: underline;
+            text-decoration-color: #FFD700; /* Gold underline */
         }
 
         /* Responsive adjustments */
@@ -154,30 +205,34 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Reddit News Summarizer UI</h1>
+        <h1 class="text-3xl font-bold text-center mb-8" style="color: #FFD700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);">
+            // REDDIT NEWS FEED //
+        </h1>
 
         <div class="input-grid">
             <div class="input-group">
-                <label for="subreddit">Subreddit:</label>
-                <input type="text" id="subreddit" value="news" placeholder="e.g., worldnews, technology" class="rounded-lg">
+                <label for="subreddit">SUBREDDIT:</label>
+                <input type="text" id="subreddit" value="news" placeholder="e.g., worldnews, technology">
             </div>
             <div class="input-group">
-                <label for="postLimit">Number of Posts:</label>
-                <input type="number" id="postLimit" value="5" min="1" max="20" class="rounded-lg">
+                <label for="postLimit">POST COUNT:</label>
+                <input type="number" id="postLimit" value="5" min="1" max="20">
             </div>
             <div class="input-group">
-                <label for="commentLimit">Comments per Post:</label>
-                <input type="number" id="commentLimit" value="10" min="1" max="50" class="rounded-lg">
+                <label for="commentLimit">COMMENT LIMIT:</label>
+                <input type="number" id="commentLimit" value="10" min="1" max="50">
             </div>
         </div>
 
-        <button id="summarizeBtn" class="rounded-lg">Summarize Reddit News</button>
+        <button id="summarizeBtn">INITIATE SUMMARY PROTOCOL</button>
 
         <div id="loadingSpinner" class="loading-spinner"></div>
         <div id="errorMessage" class="error-message"></div>
 
         <div id="results" class="results-section hidden">
-            <h2 class="text-2xl font-semibold text-gray-700 mb-6">Summarized Posts</h2>
+            <h2 class="text-2xl font-semibold mb-6" style="color: #FFD700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);">
+                // SUMMARIZED DATA LOGS //
+            </h2>
             <!-- Summarized posts will be injected here -->
         </div>
     </div>
@@ -198,20 +253,20 @@
 
             // Basic validation
             if (!subreddit) {
-                showError('Please enter a subreddit name.');
+                showError('// ERROR: SUBREDDIT NAME REQUIRED //');
                 return;
             }
             if (isNaN(postLimit) || postLimit < 1 || postLimit > 20) {
-                showError('Number of posts must be between 1 and 20.');
+                showError('// ERROR: POST COUNT MUST BE 1-20 //');
                 return;
             }
             if (isNaN(commentLimit) || commentLimit < 1 || commentLimit > 50) {
-                showError('Comments per post must be between 1 and 50.');
+                showError('// ERROR: COMMENT LIMIT MUST BE 1-50 //');
                 return;
             }
 
             // Clear previous results and errors
-            resultsDiv.innerHTML = '<h2 class="text-2xl font-semibold text-gray-700 mb-6">Summarized Posts</h2>';
+            resultsDiv.innerHTML = '<h2 class="text-2xl font-semibold mb-6" style="color: #FFD700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);">// SUMMARIZED DATA LOGS //</h2>';
             resultsDiv.classList.add('hidden');
             hideError();
             showLoading();
@@ -233,7 +288,7 @@
                 const simulatedData = await simulateBackendCall(subreddit, postLimit, commentLimit);
 
                 if (simulatedData.length === 0) {
-                    showError('No posts found or summarized for the given criteria.');
+                    showError('// ALERT: NO DATA FOUND FOR CRITERIA //');
                     return;
                 }
 
@@ -242,7 +297,7 @@
 
             } catch (error) {
                 console.error('Error:', error);
-                showError('An error occurred while summarizing: ' + error.message);
+                showError('// SYSTEM ERROR: ' + error.message.toUpperCase() + ' //');
             } finally {
                 hideLoading();
             }
@@ -252,12 +307,14 @@
             loadingSpinner.style.display = 'block';
             summarizeBtn.disabled = true;
             summarizeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            summarizeBtn.textContent = 'PROCESSING DATA...';
         }
 
         function hideLoading() {
             loadingSpinner.style.display = 'none';
             summarizeBtn.disabled = false;
             summarizeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            summarizeBtn.textContent = 'INITIATE SUMMARY PROTOCOL';
         }
 
         function showError(message) {
@@ -275,28 +332,28 @@
                 const postCard = document.createElement('div');
                 postCard.className = 'post-card';
                 postCard.innerHTML = `
-                    <h3 class="text-indigo-700">${post.title}</h3>
-                    <p><strong>Subreddit:</strong> r/${post.subreddit}</p>
-                    <p><strong>Score:</strong> ${post.score}</p>
-                    <p><strong>Comments:</strong> ${post.num_comments}</p>
-                    <p><strong>Post Summary:</strong> ${post.post_summary || 'No summary available.'}</p>
-                    <a href="${post.url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">Read Original Post</a>
+                    <h3 class="text-yellow-400">${post.title}</h3>
+                    <p><strong class="text-yellow-500">SUBREDDIT:</strong> r/${post.subreddit}</p>
+                    <p><strong class="text-yellow-500">SCORE:</strong> ${post.score}</p>
+                    <p><strong class="text-yellow-500">COMMENTS:</strong> ${post.num_comments}</p>
+                    <p class="mt-4"><strong class="text-yellow-400">POST SUMMARY:</strong> ${post.post_summary || '// NO SUMMARY AVAILABLE //'}</p>
+                    <a href="${post.url}" target="_blank" rel="noopener noreferrer" class="text-yellow-500 hover:underline mt-2 inline-block">ACCESS ORIGINAL LOG</a>
 
                     <div class="comment-summary-section">
-                        <h4>Comment Analysis:</h4>
-                        <p><strong>Overall Comment Summary:</strong> ${post.comments_summary || 'No comment summary available.'}</p>
-                        <p><strong>Agreement:</strong> <span class="text-green-600">${post.comment_agreement_percentage}%</span></p>
-                        <p><strong>Disagreement:</strong> <span class="text-red-600">${post.comment_disagreement_percentage}%</span></p>
-                        <p><strong>Neutral:</strong> <span class="text-gray-600">${post.comment_neutral_percentage}%</span></p>
-                        <h5 class="font-semibold mt-4 mb-2">Top Comment Details:</h5>
+                        <h4>// COMMENT ANALYSIS //</h4>
+                        <p><strong class="text-yellow-400">OVERALL COMMENT SUMMARY:</strong> ${post.comments_summary || '// NO COMMENT SUMMARY AVAILABLE //'}</p>
+                        <p><strong class="text-yellow-500">AGREEMENT:</strong> <span class="text-green-500">${post.comment_agreement_percentage}%</span></p>
+                        <p><strong class="text-yellow-500">DISAGREEMENT:</strong> <span class="text-red-500">${post.comment_disagreement_percentage}%</span></p>
+                        <p><strong class="text-yellow-500">NEUTRAL:</strong> <span class="text-gray-400">${post.comment_neutral_percentage}%</span></p>
+                        <h5 class="font-semibold mt-4 mb-2" style="color: #FFD700;">// TOP COMMENT LOGS //</h5>
                         <div class="comment-details-list">
                             ${post.comment_details.map(comment => `
                                 <div class="comment-detail">
-                                    <p><strong>Author:</strong> ${comment.author}</p>
-                                    <p><strong>Score:</strong> ${comment.score}</p>
-                                    <p><strong>Sentiment:</strong> <span class="${comment.sentiment_label === 'POSITIVE' ? 'text-green-600' : comment.sentiment_label === 'NEGATIVE' ? 'text-red-600' : 'text-gray-600'}">${comment.sentiment_label} (${(comment.sentiment_score * 100).toFixed(2)}%)</span></p>
-                                    <p><strong>Summary:</strong> ${comment.summary || 'N/A'}</p>
-                                    <p class="text-sm text-gray-500 italic">Original snippet: "${comment.original_text_snippet}"</p>
+                                    <p><strong class="text-yellow-500">AUTHOR:</strong> ${comment.author}</p>
+                                    <p><strong class="text-yellow-500">SCORE:</strong> ${comment.score}</p>
+                                    <p><strong class="text-yellow-500">SENTIMENT:</strong> <span class="${comment.sentiment_label === 'POSITIVE' ? 'text-green-500' : comment.sentiment_label === 'NEGATIVE' ? 'text-red-500' : 'text-gray-400'}">${comment.sentiment_label} (${(comment.sentiment_score * 100).toFixed(2)}%)</span></p>
+                                    <p class="mt-2"><strong class="text-yellow-400">SUMMARY:</strong> ${comment.summary || '// N/A //'}</p>
+                                    <p class="text-sm text-gray-500 italic mt-1">// ORIGINAL SNIPPET: "${comment.original_text_snippet}"</p>
                                 </div>
                             `).join('')}
                         </div>
@@ -309,7 +366,7 @@
         // --- Simulated Backend Call (REPLACE WITH REAL FETCH TO YOUR PYTHON API) ---
         // This function simulates the data structure your Python backend would return.
         async function simulateBackendCall(subreddit, postLimit, commentLimit) {
-            console.log(`Simulating backend call for subreddit: ${subreddit}, posts: ${postLimit}, comments: ${commentLimit}`);
+            console.log(`// SIMULATING BACKEND CALL: SUBREDDIT ${subreddit}, POSTS ${postLimit}, COMMENTS ${commentLimit} //`);
             // In a real scenario, this would be your actual fetch call to your Flask/FastAPI backend.
             // Example:
             // const response = await fetch('http://localhost:5000/summarize', {
@@ -324,45 +381,45 @@
             // return await response.json();
 
             // For now, returning dummy data to show UI functionality
-            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate network delay
             return [
                 {
                     post_id: "example1",
-                    title: "Breaking News: AI Achieves Sentience",
-                    author: "AI_Enthusiast",
+                    title: "CRITICAL ALERT: QUANTUM ENTANGLEMENT STABILIZED IN LAB",
+                    author: "AGENT_ZERO",
                     subreddit: subreddit,
                     score: 12345,
                     num_comments: 567,
                     url: "https://www.reddit.com/r/news/comments/example1/",
-                    post_summary: "A new report suggests that advanced AI models have demonstrated self-awareness, sparking global debate on ethics and future implications.",
-                    comments_summary: "Out of 10 comments: 6 positive, 3 negative, 1 neutral. Key themes from comments: Excitement about AI future, concerns about control, and calls for new regulations.",
+                    post_summary: "BREAKTHROUGH IN QUANTUM PHYSICS: RESEARCHERS ANNOUNCE SUCCESSFUL STABILIZATION OF ENTANGLED PARTICLES, OPENING NEW AVENUES FOR SECURE COMMUNICATION AND COMPUTING. IMPLICATIONS FOR REALITY FABRIC UNKNOWN.",
+                    comments_summary: "// DATA LOG: 6 POSITIVE, 3 NEGATIVE, 1 NEUTRAL. KEY THEMES: EXCITEMENT FOR NEW TECH, FEAR OF UNSTABLE REALITY, CALLS FOR ETHICAL OVERSIGHT. //",
                     comment_agreement_percentage: 60.0,
                     comment_disagreement_percentage: 30.0,
                     comment_neutral_percentage: 10.0,
                     comment_details: [
-                        { id: "c1", author: "UserA", score: 150, sentiment_label: "POSITIVE", sentiment_score: 0.98, summary: "This is an incredible breakthrough for humanity!", original_text_snippet: "This is an incredible breakthrough for humanity! I can't wait to see what comes next." },
-                        { id: "c2", author: "UserB", score: 80, sentiment_label: "NEGATIVE", sentiment_score: 0.92, summary: "Terrifying implications, we need to be careful.", original_text_snippet: "This is terrifying. We need to be extremely careful about the implications of this technology." },
-                        { id: "c3", author: "UserC", score: 50, sentiment_label: "POSITIVE", sentiment_score: 0.85, summary: "Hope for a better future with AI.", original_text_snippet: "I have so much hope for a better future with AI now. This is truly amazing." },
-                        { id: "c4", author: "UserD", score: 20, sentiment_label: "NEUTRAL", sentiment_score: 0.55, summary: "Interesting development, still early days.", original_text_snippet: "It's an interesting development, but I think it's still too early to tell the full impact." },
+                        { id: "c1", author: "CYBER_NOMAD", score: 150, sentiment_label: "POSITIVE", sentiment_score: 0.98, summary: "THIS IS THE FUTURE. IMMINENT DATA TRANSFER SPEEDS. //", original_text_snippet: "THIS IS THE FUTURE. IMMINENT DATA TRANSFER SPEEDS. OUR DIGITAL LIVES WILL BE TRANSFORMED." },
+                        { id: "c2", author: "VOID_WALKER", score: 80, sentiment_label: "NEGATIVE", sentiment_score: 0.92, summary: "DANGEROUS. INTERFERING WITH REALITY HAS CONSEQUENCES. //", original_text_snippet: "DANGEROUS. INTERFERING WITH THE FABRIC OF REALITY ALWAYS HAS UNFORESEEN CONSEQUENCES. BEWARE." },
+                        { id: "c3", author: "TECH_MAGE", score: 50, sentiment_label: "POSITIVE", sentiment_score: 0.85, summary: "POTENTIAL FOR UNLIMITED COMPUTATIONAL POWER. //", original_text_snippet: "THE POTENTIAL FOR UNLIMITED COMPUTATIONAL POWER IS NOW WITHIN REACH. A NEW ERA BEGINS." },
+                        { id: "c4", author: "DATA_DRONE", score: 20, sentiment_label: "NEUTRAL", sentiment_score: 0.55, summary: "OBSERVING DATA. IMPLICATIONS UNCERTAIN. //", original_text_snippet: "OBSERVING DATA. IMPLICATIONS REMAIN UNCERTAIN. FURTHER ANALYSIS REQUIRED BEFORE JUDGMENT." },
                     ]
                 },
                 {
                     post_id: "example2",
-                    title: "Global Climate Summit Concludes with New Pledges",
-                    author: "EcoWarrior",
+                    title: "URBAN INFRASTRUCTURE UPGRADE INITIATED: NEON DISTRICTS",
+                    author: "CITY_PLANNER",
                     subreddit: subreddit,
                     score: 8765,
                     num_comments: 321,
                     url: "https://www.reddit.com/r/news/comments/example2/",
-                    post_summary: "Leaders from around the world signed new agreements to reduce carbon emissions and invest in renewable energy, aiming for ambitious climate goals.",
-                    comments_summary: "Out of 10 comments: 7 positive, 2 negative, 1 neutral. Key themes from comments: Optimism about climate action, skepticism about follow-through, and calls for stronger policies.",
+                    post_summary: "MAJOR CITY-WIDE UPGRADE PROJECT LAUNCHED TO MODERNIZE INFRASTRUCTURE AND ENHANCE NEON DISTRICTS. AIMING FOR INCREASED EFFICIENCY AND VISUAL APPEAL. CITIZEN FEEDBACK ENCOURAGED.",
+                    comments_summary: "// DATA LOG: 7 POSITIVE, 2 NEGATIVE, 1 NEUTRAL. KEY THEMES: OPTIMISM FOR CITY REVITALIZATION, CONCERNS ABOUT GENTRIFICATION, CALLS FOR TRANSPARENCY. //",
                     comment_agreement_percentage: 70.0,
                     comment_disagreement_percentage: 20.0,
                     comment_neutral_percentage: 10.0,
                     comment_details: [
-                        { id: "c5", author: "GreenHope", score: 120, sentiment_label: "POSITIVE", sentiment_score: 0.95, summary: "Finally some real action on climate change!", original_text_snippet: "This is fantastic news! Finally, some real action on climate change. So proud of these leaders." },
-                        { id: "c6", author: "SkepticalSam", score: 40, sentiment_label: "NEGATIVE", sentiment_score: 0.88, summary: "Too little, too late, and likely empty promises.", original_text_snippet: "I'm skeptical. These are just empty promises, too little too late to make a real difference." },
-                        { id: "c7", author: "Optimist", score: 60, sentiment_label: "POSITIVE", sentiment_score: 0.90, summary: "A step in the right direction, hopeful for future.", original_text_snippet: "Every step counts. This is a positive development and I'm hopeful for the future." },
+                        { id: "c5", author: "BRIGHT_LIGHTS", score: 120, sentiment_label: "POSITIVE", sentiment_score: 0.95, summary: "FINALLY, THE CITY WILL SHINE BRIGHTER! //", original_text_snippet: "FINALLY, THE CITY WILL SHINE BRIGHTER! CAN'T WAIT TO SEE THE NEW NEON DISTRICTS." },
+                        { id: "c6", author: "OLD_SCHOOL", score: 40, sentiment_label: "NEGATIVE", sentiment_score: 0.88, summary: "JUST MORE GENTRIFICATION. DISPLACING THE LOCALS. //", original_text_snippet: "THIS IS JUST MORE GENTRIFICATION. THEY'RE DISPLACING THE LOCALS FOR CORPORATE INTERESTS." },
+                        { id: "c7", author: "FUTURE_FAN", score: 60, sentiment_label: "POSITIVE", sentiment_score: 0.90, summary: "A NECESSARY STEP FOR PROGRESS. //", original_text_snippet: "A NECESSARY STEP FOR PROGRESS. THE CITY NEEDS TO EVOLVE TO STAY RELEVANT." },
                     ]
                 }
             ];
