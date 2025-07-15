@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reddit News Summarizer - ZZZ Style (Black & Yellow)</title>
+    <title>Reddit News Summarizer (Black & Darker Yellow)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Space Mono for techy feel -->
@@ -24,8 +24,8 @@
             background-color: #1a1a1a; /* Dark gray/off-black */
             padding: 2.5rem;
             border-radius: 0.75rem; /* Slightly less rounded */
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2); /* Gold glow */
-            border: 1px solid #FFD700; /* Gold border */
+            box-shadow: 0 0 20px rgba(200, 162, 0, 0.2); /* Darker Gold glow */
+            border: 1px solid #C8A200; /* Darker Gold border */
             width: 100%;
             max-width: 1024px; /* Increased max-width */
             margin-top: 2rem;
@@ -58,13 +58,13 @@
             display: block;
             margin-bottom: 0.5rem;
             font-weight: 700;
-            color: #FFD700; /* Gold for labels */
+            color: #C8A200; /* Darker Gold for labels */
         }
         input[type="text"], input[type="number"] {
             width: 100%;
             padding: 0.75rem;
             background-color: #0a0a0a; /* Darker input background */
-            border: 1px solid #FF8C00; /* Dark orange border */
+            border: 1px solid #CC7722; /* Darker Orange border */
             border-radius: 0.5rem;
             font-size: 1rem;
             color: #ffffff; /* White text */
@@ -72,11 +72,11 @@
         }
         input[type="text"]:focus, input[type="number"]:focus {
             outline: none;
-            border-color: #FFD700; /* Gold on focus */
-            box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.4); /* Gold glow on focus */
+            border-color: #C8A200; /* Darker Gold on focus */
+            box-shadow: 0 0 0 3px rgba(200, 162, 0, 0.4); /* Darker Gold glow on focus */
         }
         button {
-            background-color: #FF8C00; /* Dark orange button */
+            background-color: #CC7722; /* Darker Orange button */
             color: white;
             padding: 0.825rem 1.65rem; /* 10% larger padding */
             border-radius: 0.5rem;
@@ -91,9 +91,9 @@
             letter-spacing: 0.05em;
         }
         button:hover {
-            background-color: #E67A00; /* Darker orange */
+            background-color: #B86B1E; /* Even darker orange */
             transform: translateY(-2px);
-            border-color: #FFD700; /* Gold border on hover */
+            border-color: #C8A200; /* Darker Gold border on hover */
             box-shadow: none; /* Ensure no shadow on hover */
         }
         button:active {
@@ -102,8 +102,8 @@
             box-shadow: none; /* Ensure no shadow on active */
         }
         .loading-spinner {
-            border: 4px solid rgba(255, 215, 0, 0.2); /* Gold spinner */
-            border-left-color: #FFD700;
+            border: 4px solid rgba(200, 162, 0, 0.2); /* Darker Gold spinner */
+            border-left-color: #C8A200;
             border-radius: 50%;
             width: 30px;
             height: 30px;
@@ -117,7 +117,7 @@
         }
         .results-section {
             margin-top: 2.5rem;
-            border-top: 1px solid #FFD700; /* Gold separator */
+            border-top: 1px solid #C8A200; /* Darker Gold separator */
             padding-top: 2.5rem;
         }
         .post-card {
@@ -125,15 +125,15 @@
             padding: 1.5rem;
             border-radius: 0.75rem;
             margin-bottom: 1.5rem;
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.15); /* Subtle gold glow */
-            border: 1px solid #FF8C00; /* Dark orange border */
+            box-shadow: 0 0 10px rgba(200, 162, 0, 0.15); /* Subtle darker gold glow */
+            border: 1px solid #CC7722; /* Darker Orange border */
         }
         .post-card h3 {
             font-size: 1.6rem;
             font-weight: 700;
-            color: #FFD700; /* Gold for titles */
+            color: #C8A200; /* Darker Gold for titles */
             margin-bottom: 0.75rem;
-            text-shadow: 0 0 5px rgba(255, 215, 0, 0.5); /* Subtle glow effect */
+            text-shadow: 0 0 5px rgba(200, 162, 0, 0.5); /* Subtle glow effect */
         }
         .post-card p {
             color: #e0e0e0; /* Lighter gray for body text */
@@ -146,12 +146,12 @@
         .comment-summary-section {
             margin-top: 1.5rem;
             padding-top: 1.5rem;
-            border-top: 1px dashed #FF8C00; /* Dark orange dashed separator */
+            border-top: 1px dashed #CC7722; /* Darker Orange dashed separator */
         }
         .comment-summary-section h4 {
             font-size: 1.25rem;
             font-weight: 700;
-            color: #FFD700; /* Gold for sub-titles */
+            color: #C8A200; /* Darker Gold for sub-titles */
             margin-bottom: 0.75rem;
         }
         .comment-detail {
@@ -159,7 +159,7 @@
             padding: 0.75rem;
             border-radius: 0.5rem;
             margin-bottom: 0.5rem;
-            border: 1px solid #FFD700; /* Gold border */
+            border: 1px solid #C8A200; /* Darker Gold border */
         }
         .error-message {
             color: #FF3131; /* Bright red for errors */
@@ -180,12 +180,12 @@
         .text-gray-400 {
             color: #B0B0B0; /* Lighter gray */
         }
-        .text-yellow-500 { /* For links */
-            color: #FFD700; /* Gold for links */
+        .text-yellow-500 { /* For links - adjusted to darker yellow */
+            color: #C8A200; /* Darker Gold for links */
         }
         .hover\:underline:hover {
             text-decoration: underline;
-            text-decoration-color: #FFD700; /* Gold underline */
+            text-decoration-color: #C8A200; /* Darker Gold underline */
         }
 
         /* Responsive adjustments */
@@ -205,7 +205,7 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="text-3xl font-bold text-center mb-8" style="color: #FFD700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);">
+        <h1 class="text-3xl font-bold text-center mb-8" style="color: #C8A200; text-shadow: 0 0 10px rgba(200, 162, 0, 0.7);">
             // REDDIT NEWS FEED //
         </h1>
 
@@ -230,7 +230,7 @@
         <div id="errorMessage" class="error-message"></div>
 
         <div id="results" class="results-section hidden">
-            <h2 class="text-2xl font-semibold mb-6" style="color: #FFD700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);">
+            <h2 class="text-2xl font-semibold mb-6" style="color: #C8A200; text-shadow: 0 0 8px rgba(200, 162, 0, 0.5);">
                 // SUMMARIZED DATA LOGS //
             </h2>
             <!-- Summarized posts will be injected here -->
@@ -266,7 +266,7 @@
             }
 
             // Clear previous results and errors
-            resultsDiv.innerHTML = '<h2 class="text-2xl font-semibold mb-6" style="color: #FFD700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);">// SUMMARIZED DATA LOGS //</h2>';
+            resultsDiv.innerHTML = '<h2 class="text-2xl font-semibold mb-6" style="color: #C8A200; text-shadow: 0 0 8px rgba(200, 162, 0, 0.5);">// SUMMARIZED DATA LOGS //</h2>';
             resultsDiv.classList.add('hidden');
             hideError();
             showLoading();
@@ -345,7 +345,7 @@
                         <p><strong class="text-yellow-500">AGREEMENT:</strong> <span class="text-green-500">${post.comment_agreement_percentage}%</span></p>
                         <p><strong class="text-yellow-500">DISAGREEMENT:</strong> <span class="text-red-500">${post.comment_disagreement_percentage}%</span></p>
                         <p><strong class="text-yellow-500">NEUTRAL:</strong> <span class="text-gray-400">${post.comment_neutral_percentage}%</span></p>
-                        <h5 class="font-semibold mt-4 mb-2" style="color: #FFD700;">// TOP COMMENT LOGS //</h5>
+                        <h5 class="font-semibold mt-4 mb-2" style="color: #C8A200;">// TOP COMMENT LOGS //</h5>
                         <div class="comment-details-list">
                             ${post.comment_details.map(comment => `
                                 <div class="comment-detail">
