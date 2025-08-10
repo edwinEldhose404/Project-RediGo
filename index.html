@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reddit News Summarizer (Black & Darker Yellow)</title>
+    <title>Reddit News Summarizer - ZZZ Style (Black & Darker Yellow)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Space Mono for techy feel -->
@@ -272,27 +272,27 @@
             showLoading();
 
             try {
-                // --- IMPORTANT: Placeholder for your backend API call ---
-                // In a real application, you would have a Python backend (e.g., Flask/FastAPI)
-                // running that exposes an API endpoint.
-                // Example: const response = await fetch('http://localhost:5000/summarize', {
-                //     method: 'POST',
-                //     headers: { 'Content-Type': 'application/json' },
-                //     body: JSON.stringify({ subreddit, post_limit: postLimit, comment_limit: commentLimit })
-                // });
-                // const data = await response.json();
-                // --- END Placeholder ---
+                // --- ACTUAL BACKEND API CALL ---
+                const response = await fetch('http://localhost:5000/summarize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subreddit, post_limit: postLimit, comment_limit: commentLimit })
+                });
 
-                // For demonstration, we'll simulate data.
-                // In a real app, 'data' would come from your Python backend.
-                const simulatedData = await simulateBackendCall(subreddit, postLimit, commentLimit);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                }
 
-                if (simulatedData.length === 0) {
-                    showError('// ALERT: NO DATA FOUND FOR CRITERIA //');
+                const data = await response.json();
+                const processedPosts = data.data; // Assuming your FastAPI returns {"message": ..., "data": [...]}
+
+                if (processedPosts.length === 0) {
+                    showError('// ALERT: NO NEW POSTS FOUND OR SUMMARIZED FOR CRITERIA //');
                     return;
                 }
 
-                displayResults(simulatedData);
+                displayResults(processedPosts);
                 resultsDiv.classList.remove('hidden');
 
             } catch (error) {
@@ -331,11 +331,15 @@
             posts.forEach(post => {
                 const postCard = document.createElement('div');
                 postCard.className = 'post-card';
+                // Convert datetime strings back to readable format if needed, or display as is
+                const createdDate = post.created_utc ? new Date(post.created_utc).toLocaleString() : 'N/A';
+
                 postCard.innerHTML = `
                     <h3 class="text-yellow-400">${post.title}</h3>
                     <p><strong class="text-yellow-500">SUBREDDIT:</strong> r/${post.subreddit}</p>
                     <p><strong class="text-yellow-500">SCORE:</strong> ${post.score}</p>
                     <p><strong class="text-yellow-500">COMMENTS:</strong> ${post.num_comments}</p>
+                    <p><strong class="text-yellow-500">CREATED:</strong> ${createdDate}</p>
                     <p class="mt-4"><strong class="text-yellow-400">POST SUMMARY:</strong> ${post.post_summary || '// NO SUMMARY AVAILABLE //'}</p>
                     <a href="${post.url}" target="_blank" rel="noopener noreferrer" class="text-yellow-500 hover:underline mt-2 inline-block">ACCESS ORIGINAL LOG</a>
 
@@ -361,68 +365,6 @@
                 `;
                 resultsDiv.appendChild(postCard);
             });
-        }
-
-        // --- Simulated Backend Call (REPLACE WITH REAL FETCH TO YOUR PYTHON API) ---
-        // This function simulates the data structure your Python backend would return.
-        async function simulateBackendCall(subreddit, postLimit, commentLimit) {
-            console.log(`// SIMULATING BACKEND CALL: SUBREDDIT ${subreddit}, POSTS ${postLimit}, COMMENTS ${commentLimit} //`);
-            // In a real scenario, this would be your actual fetch call to your Flask/FastAPI backend.
-            // Example:
-            // const response = await fetch('http://localhost:5000/summarize', {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify({ subreddit, post_limit: postLimit, comment_limit: commentLimit })
-            // });
-            // if (!response.ok) {
-            //     const errorText = await response.text();
-            //     throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-            // }
-            // return await response.json();
-
-            // For now, returning dummy data to show UI functionality
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate network delay
-            return [
-                {
-                    post_id: "example1",
-                    title: "CRITICAL ALERT: QUANTUM ENTANGLEMENT STABILIZED IN LAB",
-                    author: "AGENT_ZERO",
-                    subreddit: subreddit,
-                    score: 12345,
-                    num_comments: 567,
-                    url: "https://www.reddit.com/r/news/comments/example1/",
-                    post_summary: "BREAKTHROUGH IN QUANTUM PHYSICS: RESEARCHERS ANNOUNCE SUCCESSFUL STABILIZATION OF ENTANGLED PARTICLES, OPENING NEW AVENUES FOR SECURE COMMUNICATION AND COMPUTING. IMPLICATIONS FOR REALITY FABRIC UNKNOWN.",
-                    comments_summary: "// DATA LOG: 6 POSITIVE, 3 NEGATIVE, 1 NEUTRAL. KEY THEMES: EXCITEMENT FOR NEW TECH, FEAR OF UNSTABLE REALITY, CALLS FOR ETHICAL OVERSIGHT. //",
-                    comment_agreement_percentage: 60.0,
-                    comment_disagreement_percentage: 30.0,
-                    comment_neutral_percentage: 10.0,
-                    comment_details: [
-                        { id: "c1", author: "CYBER_NOMAD", score: 150, sentiment_label: "POSITIVE", sentiment_score: 0.98, summary: "THIS IS THE FUTURE. IMMINENT DATA TRANSFER SPEEDS. //", original_text_snippet: "THIS IS THE FUTURE. IMMINENT DATA TRANSFER SPEEDS. OUR DIGITAL LIVES WILL BE TRANSFORMED." },
-                        { id: "c2", author: "VOID_WALKER", score: 80, sentiment_label: "NEGATIVE", sentiment_score: 0.92, summary: "DANGEROUS. INTERFERING WITH REALITY HAS CONSEQUENCES. //", original_text_snippet: "DANGEROUS. INTERFERING WITH THE FABRIC OF REALITY ALWAYS HAS UNFORESEEN CONSEQUENCES. BEWARE." },
-                        { id: "c3", author: "TECH_MAGE", score: 50, sentiment_label: "POSITIVE", sentiment_score: 0.85, summary: "POTENTIAL FOR UNLIMITED COMPUTATIONAL POWER. //", original_text_snippet: "THE POTENTIAL FOR UNLIMITED COMPUTATIONAL POWER IS NOW WITHIN REACH. A NEW ERA BEGINS." },
-                        { id: "c4", author: "DATA_DRONE", score: 20, sentiment_label: "NEUTRAL", sentiment_score: 0.55, summary: "OBSERVING DATA. IMPLICATIONS UNCERTAIN. //", original_text_snippet: "OBSERVING DATA. IMPLICATIONS REMAIN UNCERTAIN. FURTHER ANALYSIS REQUIRED BEFORE JUDGMENT." },
-                    ]
-                },
-                {
-                    post_id: "example2",
-                    title: "URBAN INFRASTRUCTURE UPGRADE INITIATED: NEON DISTRICTS",
-                    author: "CITY_PLANNER",
-                    subreddit: subreddit,
-                    score: 8765,
-                    num_comments: 321,
-                    url: "https://www.reddit.com/r/news/comments/example2/",
-                    post_summary: "MAJOR CITY-WIDE UPGRADE PROJECT LAUNCHED TO MODERNIZE INFRASTRUCTURE AND ENHANCE NEON DISTRICTS. AIMING FOR INCREASED EFFICIENCY AND VISUAL APPEAL. CITIZEN FEEDBACK ENCOURAGED.",
-                    comments_summary: "// DATA LOG: 7 POSITIVE, 2 NEGATIVE, 1 NEUTRAL. KEY THEMES: OPTIMISM FOR CITY REVITALIZATION, CONCERNS ABOUT GENTRIFICATION, CALLS FOR TRANSPARENCY. //",
-                    comment_agreement_percentage: 70.0,
-                    comment_disagreement_percentage: 20.0,
-                    comment_neutral_percentage: 10.0,
-                    comment_details: [
-                        { id: "c5", author: "BRIGHT_LIGHTS", score: 120, sentiment_label: "POSITIVE", sentiment_score: 0.95, summary: "FINALLY, THE CITY WILL SHINE BRIGHTER! //", original_text_snippet: "FINALLY, THE CITY WILL SHINE BRIGHTER! CAN'T WAIT TO SEE THE NEW NEON DISTRICTS." },
-                        { id: "c6", author: "OLD_SCHOOL", score: 40, sentiment_label: "NEGATIVE", sentiment_score: 0.88, summary: "JUST MORE GENTRIFICATION. DISPLACING THE LOCALS. //", original_text_snippet: "THIS IS JUST MORE GENTRIFICATION. THEY'RE DISPLACING THE LOCALS FOR CORPORATE INTERESTS." },
-                        { id: "c7", author: "FUTURE_FAN", score: 60, sentiment_label: "POSITIVE", sentiment_score: 0.90, summary: "A NECESSARY STEP FOR PROGRESS. //", original_text_snippet: "A NECESSARY STEP FOR PROGRESS. THE CITY NEEDS TO EVOLVE TO STAY RELEVANT." },
-                    ]
-                }
-            ];
         }
     </script>
 </body>

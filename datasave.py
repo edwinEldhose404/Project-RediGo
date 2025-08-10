@@ -158,27 +158,37 @@ def analyze_comment_agreement(comments: list, post_title: str, post_selftext: st
     }
 
 def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_limit_per_post: int):
+    """
+    Fetches posts, processes them, and stores the data.
+    Returns a list of dictionaries for the processed posts.
+    """
     logging.info(f"Fetching top {post_limit} posts from r/{subreddit_name}...")
     subreddit = reddit.subreddit(subreddit_name)
-    processed_posts_count = 0
+    processed_posts = [] # List to store processed post data
 
-    for submission in subreddit.new(limit=post_limit):
+    for submission in subreddit.new(limit=post_limit): # Or subreddit.new(limit=post_limit)
         try:
             logging.info(f"Processing post: '{submission.title}' (ID: {submission.id})")
 
+            # --- Check if post already exists in the database ---
             if collection.find_one({"post_id": submission.id}):
                 logging.info(f"Post '{submission.title}' (ID: {submission.id}) already exists in the database. Skipping.")
-                continue
-            
+                continue # Skip to the next submission
+            # --- END NEW FEATURE ---
+
+            # Summarize the post title and selftext
             post_text_to_summarize = f"{submission.title}. {submission.selftext}" if submission.selftext else submission.title
             post_summary = summarize_text(post_text_to_summarize)
 
-            submission.comments.replace_more(limit=0) 
+            # Fetch comments
+            submission.comments.replace_more(limit=0) # Flatten comments, get all top-level comments
             comments = [comment for comment in submission.comments.list() if isinstance(comment, praw.models.Comment)][:comment_limit_per_post]
             logging.info(f"Fetched {len(comments)} comments for post '{submission.title}'.")
 
+            # Analyze comments for summary and agreement
             comment_analysis_result = analyze_comment_agreement(comments, submission.title, submission.selftext)
 
+            # Prepare data for MongoDB
             post_data = {
                 "post_id": submission.id,
                 "title": submission.title,
@@ -197,17 +207,35 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
                 "processed_at": datetime.now()
             }
 
+            # Store in MongoDB
             collection.insert_one(post_data)
-            logging.info(f"Successfully stored post '{submission.title}' in MongoDB.\n")
-            processed_posts_count += 1
+            logging.info(f"Successfully stored post '{submission.title}' in MongoDB.")
+            processed_posts.append(post_data) # Add to the list to be returned
 
         except Exception as e:
             logging.error(f"Error processing post ID {submission.id} ('{submission.title}'): {e}", exc_info=True)
-            continue
+            continue # Continue to the next post even if one fails
 
-    logging.info(f"Finished processing. Total {processed_posts_count} posts processed and stored.")
-    client.close()
-    logging.info("MongoDB connection closed.")
+    logging.info(f"Finished processing. Total {len(processed_posts)} new posts processed and stored.")
+    # client.close() # REMOVE THIS LINE if client is global and needs to stay open for API
+    # logging.info("MongoDB connection closed.") # REMOVE THIS LINE
+    return processed_posts # Return the list of processed posts
+
+# --- Main Execution ---
+if __name__ == "__main__":
+    # IMPORTANT: This block will now only run if you execute reddit_summarizer.py directly.
+    # When run via FastAPI, fetch_and_process_subreddit is called by app.py.
+    if REDDIT_CLIENT_ID == "YOUR_REDDIT_CLIENT_ID":
+        logging.error("Please update REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_USERNAME, REDDIT_PASSWORD, and REDDIT_USER_AGENT in the script before running.")
+    else:
+        # If you still want to run it standalone, you might want to print the results
+        results = fetch_and_process_subreddit(SUBREDDIT_NAME, POST_LIMIT, COMMENT_LIMIT_PER_POST)
+        logging.info(f"Standalone run complete. Processed {len(results)} posts.")
+        # Re-close client if it was opened only for this standalone run
+        # if 'client' in globals() and client:
+        #     client.close()
+        #     logging.info("MongoDB connection closed for standalone run.")
+
 
 
 # --- Main Execution Block ---
