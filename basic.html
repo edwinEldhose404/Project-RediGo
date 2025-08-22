@@ -7,147 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6; 
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            padding: 2rem;
-        }
-        .container {
-            background-color: #ffffff;
-            padding: 2.5rem;
-            border-radius: 1rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 960px;
-            margin-top: 2rem;
-        }
-        .input-group {
-            margin-bottom: 1.5rem;
-        }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #374151;
-        }
-        input[type="text"], input[type="number"] {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            font-size: 1rem;
-            color: #374151;
-            transition: border-color 0.2s;
-        }
-        input[type="text"]:focus, input[type="number"]:focus {
-            outline: none;
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-        }
-        button {
-            background-color: #4f46e5; 
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s;
-            border: none;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 100%;
-        }
-        button:hover {
-            background-color: #4338ca;
-            transform: translateY(-1px);
-        }
-        button:active {
-            transform: translateY(0);
-            box-shadow: none;
-        }
-        .loading-spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: #4f46e5;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 2rem auto;
-            display: none; 
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .results-section {
-            margin-top: 2rem;
-            border-top: 1px solid #e5e7eb;
-            padding-top: 2rem;
-        }
-        .post-card {
-            background-color: #f9fafb; 
-            padding: 1.5rem;
-            border-radius: 0.75rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e5e7eb;
-        }
-        .post-card h3 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 0.75rem;
-        }
-        .post-card p {
-            color: #4b5563;
-            line-height: 1.6;
-            margin-bottom: 0.5rem;
-        }
-        .post-card strong {
-            color: #1f2937;
-        }
-        .comment-summary-section {
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px dashed #d1d5db;
-        }
-        .comment-summary-section h4 {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 0.75rem;
-        }
-        .comment-detail {
-            background-color: #ffffff;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            margin-bottom: 0.5rem;
-            border: 1px solid #e5e7eb;
-        }
-        .error-message {
-            color: #ef4444;
-            background-color: #fee2e2;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-top: 1rem;
-            display: none;
-        }
-
-        @media (min-width: 640px) {
-            button {
-                width: auto;
-                padding-left: 2rem;
-                padding-right: 2rem;
-            }
-            .input-grid {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 1.5rem;
-            }
-        }
+        /* ... (No changes to the style section) ... */
     </style>
 </head>
 <body>
@@ -212,15 +72,27 @@
             showLoading();
 
             try {
-                // PUT BACKEND API THINGABOB HERE
-                const simulatedData = await simulateBackendCall(subreddit, postLimit, commentLimit);
+                // --- REAL BACKEND API CALL ---
+                const response = await fetch('http://localhost:5000/summarize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subreddit, post_limit: postLimit, comment_limit: commentLimit })
+                });
 
-                if (simulatedData.length === 0) {
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const processedPosts = data.data; // Access the 'data' key
+
+                if (processedPosts.length === 0) {
                     showError('No posts found or summarized for the given criteria.');
                     return;
                 }
 
-                displayResults(simulatedData);
+                displayResults(processedPosts);
                 resultsDiv.classList.remove('hidden');
 
             } catch (error) {
@@ -257,11 +129,15 @@
             posts.forEach(post => {
                 const postCard = document.createElement('div');
                 postCard.className = 'post-card';
+                // Convert UTC date to a more readable local format
+                const createdDate = post.created_utc ? new Date(post.created_utc).toLocaleString() : 'N/A';
+
                 postCard.innerHTML = `
                     <h3 class="text-indigo-700">${post.title}</h3>
                     <p><strong>Subreddit:</strong> r/${post.subreddit}</p>
                     <p><strong>Score:</strong> ${post.score}</p>
                     <p><strong>Comments:</strong> ${post.num_comments}</p>
+                    <p><strong>Created:</strong> ${createdDate}</p>
                     <p><strong>Post Summary:</strong> ${post.post_summary || 'No summary available.'}</p>
                     <a href="${post.url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">Read Original Post</a>
 
@@ -287,68 +163,6 @@
                 `;
                 resultsDiv.appendChild(postCard);
             });
-        }
-
-        // --- Simulated Backend Call (REPLACE WITH REAL FETCH TO YOUR PYTHON API) ---
-        // This function simulates the data structure your Python backend would return.
-        async function simulateBackendCall(subreddit, postLimit, commentLimit) {
-            console.log(`Simulating backend call for subreddit: ${subreddit}, posts: ${postLimit}, comments: ${commentLimit}`);
-            // In a real scenario, this would be your actual fetch call to your Flask/FastAPI backend.
-            // Example:
-            // const response = await fetch('http://localhost:5000/summarize', {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify({ subreddit, post_limit: postLimit, comment_limit: commentLimit })
-            // });
-            // if (!response.ok) {
-            //     const errorText = await response.text();
-            //     throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-            // }
-            // return await response.json();
-
-            // For now, returning dummy data to show UI functionality
-            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-            return [
-                {
-                    post_id: "example1",
-                    title: "Breaking News: AI Achieves Sentience",
-                    author: "AI_Enthusiast",
-                    subreddit: subreddit,
-                    score: 12345,
-                    num_comments: 567,
-                    url: "https://www.reddit.com/r/news/comments/example1/",
-                    post_summary: "A new report suggests that advanced AI models have demonstrated self-awareness, sparking global debate on ethics and future implications.",
-                    comments_summary: "Out of 10 comments: 6 positive, 3 negative, 1 neutral. Key themes from comments: Excitement about AI future, concerns about control, and calls for new regulations.",
-                    comment_agreement_percentage: 60.0,
-                    comment_disagreement_percentage: 30.0,
-                    comment_neutral_percentage: 10.0,
-                    comment_details: [
-                        { id: "c1", author: "UserA", score: 150, sentiment_label: "POSITIVE", sentiment_score: 0.98, summary: "This is an incredible breakthrough for humanity!", original_text_snippet: "This is an incredible breakthrough for humanity! I can't wait to see what comes next." },
-                        { id: "c2", author: "UserB", score: 80, sentiment_label: "NEGATIVE", sentiment_score: 0.92, summary: "Terrifying implications, we need to be careful.", original_text_snippet: "This is terrifying. We need to be extremely careful about the implications of this technology." },
-                        { id: "c3", author: "UserC", score: 50, sentiment_label: "POSITIVE", sentiment_score: 0.85, summary: "Hope for a better future with AI.", original_text_snippet: "I have so much hope for a better future with AI now. This is truly amazing." },
-                        { id: "c4", author: "UserD", score: 20, sentiment_label: "NEUTRAL", sentiment_score: 0.55, summary: "Interesting development, still early days.", original_text_snippet: "It's an interesting development, but I think it's still too early to tell the full impact." },
-                    ]
-                },
-                {
-                    post_id: "example2",
-                    title: "Global Climate Summit Concludes with New Pledges",
-                    author: "EcoWarrior",
-                    subreddit: subreddit,
-                    score: 8765,
-                    num_comments: 321,
-                    url: "https://www.reddit.com/r/news/comments/example2/",
-                    post_summary: "Leaders from around the world signed new agreements to reduce carbon emissions and invest in renewable energy, aiming for ambitious climate goals.",
-                    comments_summary: "Out of 10 comments: 7 positive, 2 negative, 1 neutral. Key themes from comments: Optimism about climate action, skepticism about follow-through, and calls for stronger policies.",
-                    comment_agreement_percentage: 70.0,
-                    comment_disagreement_percentage: 20.0,
-                    comment_neutral_percentage: 10.0,
-                    comment_details: [
-                        { id: "c5", author: "GreenHope", score: 120, sentiment_label: "POSITIVE", sentiment_score: 0.95, summary: "Finally some real action on climate change!", original_text_snippet: "This is fantastic news! Finally, some real action on climate change. So proud of these leaders." },
-                        { id: "c6", author: "SkepticalSam", score: 40, sentiment_label: "NEGATIVE", sentiment_score: 0.88, summary: "Too little, too late, and likely empty promises.", original_text_snippet: "I'm skeptical. These are just empty promises, too little too late to make a real difference." },
-                        { id: "c7", author: "Optimist", score: 60, sentiment_label: "POSITIVE", sentiment_score: 0.90, summary: "A step in the right direction, hopeful for future.", original_text_snippet: "Every step counts. This is a positive development and I'm hopeful for the future." },
-                    ]
-                }
-            ];
         }
     </script>
 </body>

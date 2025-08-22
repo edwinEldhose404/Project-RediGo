@@ -3,25 +3,24 @@ from pymongo import MongoClient
 from transformers import pipeline
 import logging
 from datetime import datetime
+from bson.objectid import ObjectId
 
 # --- Configuration Section ---
+# DO NOT include real credentials here. Use environment variables in production.
 REDDIT_CLIENT_ID = "FPi02ocg4HRZCOdu_CH3Xg"
 REDDIT_CLIENT_SECRET = "xVncQKK1nhzCERw-GFBhkmWKeEY_9A"
 REDDIT_USER_AGENT = "RedditNewsSummarizer"
 REDDIT_USERNAME = "Shady-General-6233"
 REDDIT_PASSWORD = "Edwin282869"
 
-# Subreddit and Fetch Limit
-SUBREDDIT_NAME = "news"  # Example: "worldnews", "technology", "sports"
-POST_LIMIT = 5          # Number of top posts to fetch
-COMMENT_LIMIT_PER_POST = 10 # Number of top comments to fetch per post
-
 # --- Setup Logging ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- Initialize Models ---
+# --- Initialize Models (Global Scope) ---
+# Initialize these once when the app starts.
 try:
     logging.info("Loading summarization model...")
+    # NOTE: It's better to specify the revision for stability in a real project
     summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
     logging.info("Summarization model loaded.")
 
@@ -29,10 +28,12 @@ try:
     sentiment_analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
     logging.info("Sentiment analysis model loaded.")
 except Exception as e:
-    logging.error(f"Error loading models: {e}. Please ensure you have an active internet connection or download models locally.")
-    exit(1)
+    logging.error(f"Error loading models: {e}. Ensure you have an active internet connection or download models locally.")
+    # In a production API, you might handle this differently, e.g., by returning a 503 error
+    summarizer = None
+    sentiment_analyzer = None
 
-# --- Initialize PRAW ---
+# --- Initialize PRAW (Global Scope) ---
 try:
     reddit = praw.Reddit(
         client_id=REDDIT_CLIENT_ID,
@@ -44,22 +45,24 @@ try:
     logging.info("PRAW initialized successfully.")
 except Exception as e:
     logging.error(f"Error initializing PRAW: {e}. Check your Reddit API credentials.")
-    exit(1)
+    reddit = None
 
-# --- Initialize MongoDB ---
+# --- Initialize MongoDB (Global Scope) ---
 try:
     client = MongoClient("mongodb://localhost:27017/")
     db = client["redigo_base"]
     collection = db["redigo1"]
+    # Force a connection check
+    client.server_info()
     logging.info(f"Connected to MongoDB: Database '{db.name}', Collection '{collection.name}'.")
 except Exception as e:
     logging.error(f"Error connecting to MongoDB: {e}")
-    exit(1)
-
+    client = None
+    collection = None
 
 # --- Function Definitions ---
 def summarize_text(text: str, default_max_length: int = 150, default_min_length: int = 50) -> str:
-    if not text:
+    if not text or not summarizer:
         return ""
 
     text_words = text.strip().split()
@@ -69,12 +72,14 @@ def summarize_text(text: str, default_max_length: int = 150, default_min_length:
         return text.strip()
 
     try:
+        # Truncate text if it's too long for the model
         if len(text) > 10000:
             text = text[:10000]
 
         dynamic_max_length = min(max(int(text_len_words * 0.75), default_min_length), default_max_length)
         dynamic_min_length = min(max(int(text_len_words * 0.25), 10), dynamic_max_length - 5)
-
+        
+        # Ensure min_length is always less than max_length
         if dynamic_min_length >= dynamic_max_length:
             dynamic_min_length = max(10, dynamic_max_length - 10)
 
@@ -89,9 +94,19 @@ def analyze_comment_agreement(comments: list, post_title: str, post_selftext: st
     if total_comments == 0:
         return {
             "summary": "No comments to analyze.",
-            "agreement_percentage": 0,
-            "disagreement_percentage": 0,
-            "neutral_percentage": 0,
+            "agreement_percentage": 0.0,
+            "disagreement_percentage": 0.0,
+            "neutral_percentage": 0.0,
+            "comment_details": []
+        }
+    
+    if not sentiment_analyzer:
+        logging.warning("Sentiment analysis model not loaded. Skipping analysis.")
+        return {
+            "summary": "Sentiment analysis unavailable.",
+            "agreement_percentage": 0.0,
+            "disagreement_percentage": 0.0,
+            "neutral_percentage": 0.0,
             "comment_details": []
         }
 
@@ -100,19 +115,18 @@ def analyze_comment_agreement(comments: list, post_title: str, post_selftext: st
     neutral_count = 0
     comment_summaries = []
     
-    post_context = f"{post_title}. {post_selftext}" if post_selftext else post_title
-
     for comment in comments:
         comment_text = comment.body
-        if not comment_text:
+        if not comment_text or comment_text == '[deleted]' or comment_text == '[removed]':
             continue
         
         comment_summary = summarize_text(comment_text, default_max_length=50, default_min_length=10)
-
-        sentiment_score = None
+        
+        sentiment_score = 0.0
         sentiment_label = "NEUTRAL"
-
+        
         try:
+            # Model has a max sequence length, so we truncate
             sentiment_result = sentiment_analyzer(comment_text[:512])
             sentiment_label = sentiment_result[0]['label']
             sentiment_score = sentiment_result[0]['score']
@@ -137,15 +151,39 @@ def analyze_comment_agreement(comments: list, post_title: str, post_selftext: st
             "sentiment_score": sentiment_score
         })
 
-    agreement_percentage = (positive_count / total_comments) * 100 if total_comments > 0 else 0
-    disagreement_percentage = (negative_count / total_comments) * 100 if total_comments > 0 else 0
-    neutral_percentage = (neutral_count / total_comments) * 100 if total_comments > 0 else 0
+    total_analyzed_comments = positive_count + negative_count + neutral_count
+    if total_analyzed_comments == 0:
+        return {
+            "summary": "No valid comments to analyze.",
+            "agreement_percentage": 0.0,
+            "disagreement_percentage": 0.0,
+            "neutral_percentage": 0.0,
+            "comment_details": []
+        }
 
-    overall_comment_summary = f"Out of {total_comments} comments: {positive_count} positive, {negative_count} negative, {neutral_count} neutral. "
+    agreement_percentage = (positive_count / total_analyzed_comments) * 100
+    disagreement_percentage = (negative_count / total_analyzed_comments) * 100
+    neutral_percentage = (neutral_count / total_analyzed_comments) * 100
+    
+    # Calculate sum to check for floating point inaccuracies
+    total_percentage = agreement_percentage + disagreement_percentage + neutral_percentage
+    # Adjust one percentage to ensure they sum to 100
+    if abs(total_percentage - 100) > 0.01:
+        if agreement_percentage > 0:
+            agreement_percentage += (100 - total_percentage)
+        elif disagreement_percentage > 0:
+            disagreement_percentage += (100 - total_percentage)
+        else:
+            neutral_percentage += (100 - total_percentage)
+
+    overall_comment_summary = f"Out of {total_analyzed_comments} analyzed comments: {positive_count} positive, {negative_count} negative, {neutral_count} neutral. "
 
     if comment_summaries:
         top_comment_snippets = " ".join([c["summary"] for c in comment_summaries if c["summary"]][:5])
-        overall_comment_summary += summarize_text(f"Key themes from comments: {top_comment_snippets}", default_max_length=100, default_min_length=20)
+        if top_comment_snippets:
+            overall_comment_summary += summarize_text(f"Key themes from comments: {top_comment_snippets}", default_max_length=100, default_min_length=20)
+        else:
+            overall_comment_summary += "No specific themes identified from summaries."
     else:
         overall_comment_summary += "No specific themes identified due to lack of comments."
 
@@ -159,36 +197,44 @@ def analyze_comment_agreement(comments: list, post_title: str, post_selftext: st
 
 def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_limit_per_post: int):
     """
-    Fetches posts, processes them, and stores the data.
-    Returns a list of dictionaries for the processed posts.
+    Fetches posts, processes them, and returns the data.
+    Also stores the data in the database.
     """
-    logging.info(f"Fetching top {post_limit} posts from r/{subreddit_name}...")
-    subreddit = reddit.subreddit(subreddit_name)
-    processed_posts = [] # List to store processed post data
+    if not reddit or not client:
+        logging.error("PRAW or MongoDB client not initialized. Cannot process request.")
+        return []
 
-    for submission in subreddit.new(limit=post_limit): # Or subreddit.new(limit=post_limit)
+    logging.info(f"Fetching top {post_limit} posts from r/{subreddit_name}...")
+    try:
+        subreddit = reddit.subreddit(subreddit_name)
+        submissions = list(subreddit.new(limit=post_limit))
+    except Exception as e:
+        logging.error(f"Error fetching subreddit {subreddit_name}: {e}")
+        return []
+
+    processed_posts = []
+    for submission in submissions:
         try:
             logging.info(f"Processing post: '{submission.title}' (ID: {submission.id})")
 
-            # --- Check if post already exists in the database ---
+            # Check if post already exists in the database
             if collection.find_one({"post_id": submission.id}):
                 logging.info(f"Post '{submission.title}' (ID: {submission.id}) already exists in the database. Skipping.")
-                continue # Skip to the next submission
-            # --- END NEW FEATURE ---
+                continue
 
             # Summarize the post title and selftext
             post_text_to_summarize = f"{submission.title}. {submission.selftext}" if submission.selftext else submission.title
             post_summary = summarize_text(post_text_to_summarize)
 
             # Fetch comments
-            submission.comments.replace_more(limit=0) # Flatten comments, get all top-level comments
+            submission.comments.replace_more(limit=0)
             comments = [comment for comment in submission.comments.list() if isinstance(comment, praw.models.Comment)][:comment_limit_per_post]
             logging.info(f"Fetched {len(comments)} comments for post '{submission.title}'.")
 
             # Analyze comments for summary and agreement
             comment_analysis_result = analyze_comment_agreement(comments, submission.title, submission.selftext)
 
-            # Prepare data for MongoDB
+            # Prepare data for MongoDB and API response
             post_data = {
                 "post_id": submission.id,
                 "title": submission.title,
@@ -210,37 +256,24 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
             # Store in MongoDB
             collection.insert_one(post_data)
             logging.info(f"Successfully stored post '{submission.title}' in MongoDB.")
-            processed_posts.append(post_data) # Add to the list to be returned
+
+            # Append to the list to be returned by the function
+            processed_posts.append(post_data)
 
         except Exception as e:
             logging.error(f"Error processing post ID {submission.id} ('{submission.title}'): {e}", exc_info=True)
-            continue # Continue to the next post even if one fails
+            continue
 
     logging.info(f"Finished processing. Total {len(processed_posts)} new posts processed and stored.")
-    # client.close() # REMOVE THIS LINE if client is global and needs to stay open for API
-    # logging.info("MongoDB connection closed.") # REMOVE THIS LINE
-    return processed_posts # Return the list of processed posts
+    return processed_posts
 
-# --- Main Execution ---
-if __name__ == "__main__":
-    # IMPORTANT: This block will now only run if you execute reddit_summarizer.py directly.
-    # When run via FastAPI, fetch_and_process_subreddit is called by app.py.
-    if REDDIT_CLIENT_ID == "YOUR_REDDIT_CLIENT_ID":
-        logging.error("Please update REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_USERNAME, REDDIT_PASSWORD, and REDDIT_USER_AGENT in the script before running.")
-    else:
-        # If you still want to run it standalone, you might want to print the results
-        results = fetch_and_process_subreddit(SUBREDDIT_NAME, POST_LIMIT, COMMENT_LIMIT_PER_POST)
-        logging.info(f"Standalone run complete. Processed {len(results)} posts.")
-        # Re-close client if it was opened only for this standalone run
-        # if 'client' in globals() and client:
-        #     client.close()
-        #     logging.info("MongoDB connection closed for standalone run.")
-
-
-
-# --- Main Execution Block ---
+# --- Main Execution Block for Standalone Testing ---
 if __name__ == "__main__":
     if REDDIT_CLIENT_ID == "YOUR_REDDIT_CLIENT_ID":
-        logging.error("Please update your Reddit API credentials in the configuration section at the top of the script before running.")
+        logging.error("Please update your Reddit API credentials.")
     else:
-        fetch_and_process_subreddit(SUBREDDIT_NAME, POST_LIMIT, COMMENT_LIMIT_PER_POST)
+        results = fetch_and_process_subreddit("news", 5, 10)
+        logging.info("Standalone run complete. Processed posts:")
+        for post in results:
+            print(f"Title: {post['title']}")
+            print(f"Summary: {post['post_summary']}\n")
