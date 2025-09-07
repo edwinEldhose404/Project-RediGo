@@ -268,12 +268,12 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
     return processed_posts
 
 # --- Main Execution Block for Standalone Testing ---
-if __name__ == "__main__":
-    if REDDIT_CLIENT_ID == "YOUR_REDDIT_CLIENT_ID":
-        logging.error("Please update your Reddit API credentials.")
-    else:
-        results = fetch_and_process_subreddit("news", 5, 10)
-        logging.info("Standalone run complete. Processed posts:")
-        for post in results:
-            print(f"Title: {post['title']}")
-            print(f"Summary: {post['post_summary']}\n")
+# if __name__ == "__main__":
+#     if REDDIT_CLIENT_ID == "YOUR_REDDIT_CLIENT_ID":
+#         logging.error("Please update your Reddit API credentials.")
+#     else:
+#         results = fetch_and_process_subreddit("news", 5, 10)
+#         logging.info("Standalone run complete. Processed posts:")
+#         for post in results:
+#             print(f"Title: {post['title']}")
+#             print(f"Summary: {post['post_summary']}\n")
