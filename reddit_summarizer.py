@@ -6,27 +6,25 @@ from datetime import datetime
 from bson.objectid import ObjectId
 
 # --- Configuration Section ---
-# DO NOT include real credentials here. Use environment variables in production.
 REDDIT_CLIENT_ID = "FPi02ocg4HRZCOdu_CH3Xg"
 REDDIT_CLIENT_SECRET = "xVncQKK1nhzCERw-GFBhkmWKeEY_9A"
 REDDIT_USER_AGENT = "RedditNewsSummarizer"
 REDDIT_USERNAME = "Shady-General-6233"
 REDDIT_PASSWORD = "Edwin282869"
 
-# --- Setup Logging ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- Initialize Models (Global Scope) ---
-# Initialize these once when the app starts.
+
 try:
+
     logging.info("Loading summarization model...")
-    # NOTE: It's better to specify the revision for stability in a real project
     summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
     logging.info("Summarization model loaded.")
 
     logging.info("Loading sentiment analysis model...")
     sentiment_analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
     logging.info("Sentiment analysis model loaded.")
+    
 except Exception as e:
     logging.error(f"Error loading models: {e}. Ensure you have an active internet connection or download models locally.")
     # In a production API, you might handle this differently, e.g., by returning a 503 error

@@ -8,6 +8,8 @@ from datetime import datetime
 import logging
 from bson.objectid import ObjectId
 
+"uvicorn app:app --reload --port 5000"
+
 # Import the main processing function and clients from your existing script
 try:
     from reddit_summarizer import fetch_and_process_subreddit
