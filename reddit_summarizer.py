@@ -5,6 +5,10 @@ import logging
 from datetime import datetime
 from bson.objectid import ObjectId
 
+import google.generativeai as genai
+
+genai.configure(api_key="AIzaSyBsv7ieETRGo-xUh8K0GCk_uArTbFPiV2k")
+
 # --- Configuration Section ---
 REDDIT_CLIENT_ID = "FPi02ocg4HRZCOdu_CH3Xg"
 REDDIT_CLIENT_SECRET = "xVncQKK1nhzCERw-GFBhkmWKeEY_9A"
@@ -17,9 +21,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 try:
 
-    logging.info("Loading summarization model...")
-    summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
-    logging.info("Summarization model loaded.")
+    logging.info("Loading Gemini model for summarization...")
+    summarizer = genai.GenerativeModel("gemini-1.5-flash")
+    logging.info("Gemini model loaded.")
 
     logging.info("Loading sentiment analysis model...")
     sentiment_analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
@@ -59,8 +63,15 @@ except Exception as e:
     collection = None
 
 # --- Function Definitions ---
+import logging
+import google.generativeai as genai
+
+# Configure Gemini
+genai.configure(api_key="YOUR_API_KEY")
+model = genai.GenerativeModel("gemini-1.5-flash")
+
 def summarize_text(text: str, default_max_length: int = 150, default_min_length: int = 50) -> str:
-    if not text or not summarizer:
+    if not text:
         return ""
 
     text_words = text.strip().split()
@@ -70,22 +81,30 @@ def summarize_text(text: str, default_max_length: int = 150, default_min_length:
         return text.strip()
 
     try:
-        # Truncate text if it's too long for the model
+        # Truncate text if it's too long for Gemini
         if len(text) > 10000:
             text = text[:10000]
 
         dynamic_max_length = min(max(int(text_len_words * 0.75), default_min_length), default_max_length)
         dynamic_min_length = min(max(int(text_len_words * 0.25), 10), dynamic_max_length - 5)
-        
-        # Ensure min_length is always less than max_length
+
+        # Ensure min_length < max_length
         if dynamic_min_length >= dynamic_max_length:
             dynamic_min_length = max(10, dynamic_max_length - 10)
 
-        summary = summarizer(text, max_length=dynamic_max_length, min_length=dynamic_min_length, do_sample=False)
-        return summary[0]['summary_text']
+        # Build prompt with length constraints as guidance
+        prompt = (
+            f"Summarize the following text in a concise way as a news heading "
+            f"Try to keep the summary between {dynamic_min_length} and {dynamic_max_length} words.\n\n{text}"
+        )
+
+        response = model.generate_content(prompt)
+        return response.text.strip() if response and response.text else ""
+
     except Exception as e:
         logging.warning(f"Error summarizing text: {e}. Returning original text for now. Text snippet: '{text[:100]}...'")
         return text
+
 
 def analyze_comment_agreement(comments: list, post_title: str, post_selftext: str) -> dict:
     total_comments = len(comments)
