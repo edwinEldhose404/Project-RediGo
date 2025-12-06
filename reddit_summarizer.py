@@ -25,7 +25,6 @@ try:
     summarizer = genai.GenerativeModel("gemini-1.5-flash")
     logging.info("Gemini model loaded.")
 
-    logging.info("Loading sentiment analysis model...")
     sentiment_analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
     logging.info("Sentiment analysis model loaded.")
     
