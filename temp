@@ -1,6 +1,0 @@
-REDDIT_CLIENT_ID = "FPi02ocg4HRZCOdu_CH3Xg"
-REDDIT_CLIENT_SECRET = "xVncQKK1nhzCERw-GFBhkmWKeEY_9A"
-REDDIT_USER_AGENT = "RedditNewsSummarizer"
-REDDIT_USERNAME = "Shady-General-6233"
-REDDIT_PASSWORD = "Edwin282869"
-genai.configure(api_key="AIzaSyBsv7ieETRGo-xUh8K0GCk_uArTbFPiV2k")
