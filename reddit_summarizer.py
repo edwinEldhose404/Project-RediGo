@@ -1,28 +1,35 @@
 import praw
 from pymongo import MongoClient
-from transformers import pipeline
 import logging
 from datetime import datetime
 from bson.objectid import ObjectId
 
-import google.generativeai as genai
+from dotenv import load_dotenv
+import os
 
-genai.configure(api_key="AIzaSyBsv7ieETRGo-xUh8K0GCk_uArTbFPiV2k")
+#hide tensorflow warnings
+import warnings
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+warnings.filterwarnings("ignore", category=FutureWarning)
 
-# --- Configuration Section ---
-REDDIT_CLIENT_ID = "FPi02ocg4HRZCOdu_CH3Xg"
-REDDIT_CLIENT_SECRET = "xVncQKK1nhzCERw-GFBhkmWKeEY_9A"
-REDDIT_USER_AGENT = "RedditNewsSummarizer"
-REDDIT_USERNAME = "Shady-General-6233"
-REDDIT_PASSWORD = "Edwin282869"
 
+from transformers import pipeline
+from google import genai
+
+
+#load secret env variables
+load_dotenv()
+
+#initialize gemini
+client = genai.Client(api_key=os.getenv("GOOGLE_AI_KEY"))
+
+#initializing logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
+#load model
 try:
-
     logging.info("Loading Gemini model for summarization...")
-    summarizer = genai.GenerativeModel("gemini-1.5-flash")
+    summarizer = client.models.get("gemini-1.5-flash")
     logging.info("Gemini model loaded.")
 
     sentiment_analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
@@ -30,25 +37,22 @@ try:
     
 except Exception as e:
     logging.error(f"Error loading models: {e}. Ensure you have an active internet connection or download models locally.")
-    # In a production API, you might handle this differently, e.g., by returning a 503 error
     summarizer = None
     sentiment_analyzer = None
 
-# --- Initialize PRAW (Global Scope) ---
+#initialize PRAW
 try:
     reddit = praw.Reddit(
-        client_id=REDDIT_CLIENT_ID,
-        client_secret=REDDIT_CLIENT_SECRET,
-        user_agent=REDDIT_USER_AGENT,
-        username=REDDIT_USERNAME,
-        password=REDDIT_PASSWORD
+        client_id=os.getenv("REDDIT_CLIENT_ID"),
+        client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
+        user_agent=os.getenv("REDDIT_USER_AGENT")
     )
     logging.info("PRAW initialized successfully.")
 except Exception as e:
     logging.error(f"Error initializing PRAW: {e}. Check your Reddit API credentials.")
     reddit = None
 
-# --- Initialize MongoDB (Global Scope) ---
+#Initialize Mongo
 try:
     client = MongoClient("mongodb://localhost:27017/")
     db = client["redigo_base"]
@@ -61,15 +65,9 @@ except Exception as e:
     client = None
     collection = None
 
-# --- Function Definitions ---
-import logging
-import google.generativeai as genai
-
-# Configure Gemini
-genai.configure(api_key="YOUR_API_KEY")
-model = genai.GenerativeModel("gemini-1.5-flash")
-
+#summarize text function
 def summarize_text(text: str, default_max_length: int = 150, default_min_length: int = 50) -> str:
+
     if not text:
         return ""
 
@@ -80,24 +78,21 @@ def summarize_text(text: str, default_max_length: int = 150, default_min_length:
         return text.strip()
 
     try:
-        # Truncate text if it's too long for Gemini
         if len(text) > 10000:
             text = text[:10000]
 
         dynamic_max_length = min(max(int(text_len_words * 0.75), default_min_length), default_max_length)
         dynamic_min_length = min(max(int(text_len_words * 0.25), 10), dynamic_max_length - 5)
 
-        # Ensure min_length < max_length
         if dynamic_min_length >= dynamic_max_length:
             dynamic_min_length = max(10, dynamic_max_length - 10)
 
-        # Build prompt with length constraints as guidance
         prompt = (
             f"Summarize the following text in a concise way as a news heading "
             f"Try to keep the summary between {dynamic_min_length} and {dynamic_max_length} words.\n\n{text}"
         )
 
-        response = model.generate_content(prompt)
+        response = summarizer.generate_content(prompt)
         return response.text.strip() if response and response.text else ""
 
     except Exception as e:
@@ -284,11 +279,8 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
     return processed_posts
 
 if __name__ == "__main__":
-    if REDDIT_CLIENT_ID == "YOUR_REDDIT_CLIENT_ID":
-        logging.error("Please update your Reddit API credentials.")
-    else:
-        results = fetch_and_process_subreddit("news", 5, 10)
-        logging.info("Standalone run complete. Processed posts:")
-        for post in results:
-            print(f"Title: {post['title']}")
-            print(f"Summary: {post['post_summary']}\n")
+    results = fetch_and_process_subreddit("news", 5, 10)
+    logging.info("Standalone run complete. Processed posts:")
+    for post in results:
+        print(f"Title: {post['title']}")
+        print(f"Summary: {post['post_summary']}\n")
