@@ -9,8 +9,11 @@ import os
 
 #hide tensorflow warnings
 import warnings
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
+
+logging.getLogger("tensorflow").setLevel(logging.ERROR)
 
 
 from transformers import pipeline
@@ -21,7 +24,7 @@ from google import genai
 load_dotenv()
 
 #initialize gemini
-client = genai.Client(api_key=os.getenv("GOOGLE_AI_KEY"))
+genai_client = genai.Client(api_key=os.getenv("GOOGLE_AI_KEY"))
 
 #initializing logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -29,10 +32,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 #load model
 try:
     logging.info("Loading Gemini model for summarization...")
-    summarizer = client.models.get("gemini-1.5-flash")
+    #summarizer = client.models.get("gemini-1.5-flash")
     logging.info("Gemini model loaded.")
 
-    sentiment_analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
+    sentiment_analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english",device=0)
     logging.info("Sentiment analysis model loaded.")
     
 except Exception as e:
@@ -54,20 +57,19 @@ except Exception as e:
 
 #Initialize Mongo
 try:
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["redigo_base"]
+    mongo_client = MongoClient("mongodb://localhost:27017/")
+    db = mongo_client["redigo_base"]
     collection = db["redigo1"]
     # Force a connection check
-    client.server_info()
+    mongo_client.server_info()
     logging.info(f"Connected to MongoDB: Database '{db.name}', Collection '{collection.name}'.")
 except Exception as e:
     logging.error(f"Error connecting to MongoDB: {e}")
-    client = None
+    mongo_client = None
     collection = None
 
 #summarize text function
 def summarize_text(text: str, default_max_length: int = 150, default_min_length: int = 50) -> str:
-
     if not text:
         return ""
 
@@ -88,18 +90,25 @@ def summarize_text(text: str, default_max_length: int = 150, default_min_length:
             dynamic_min_length = max(10, dynamic_max_length - 10)
 
         prompt = (
-            f"Summarize the following text in a concise way as a news heading "
-            f"Try to keep the summary between {dynamic_min_length} and {dynamic_max_length} words.\n\n{text}"
+            f"Summarize the following text as a SHORT NEWS SUMMARY. "
+            f"Do NOT repeat the title verbatim. "
+            f"Keep it between {dynamic_min_length} and {dynamic_max_length} words.\n\n{text}"
         )
 
-        response = summarizer.generate_content(prompt)
+        response = genai_client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=prompt
+        )
+
         return response.text.strip() if response and response.text else ""
 
     except Exception as e:
-        logging.warning(f"Error summarizing text: {e}. Returning original text for now. Text snippet: '{text[:100]}...'")
+        logging.warning(f"Error summarizing text: {e}")
         return text
 
 
+
+#use sentiment analysis for checking comment agreement
 def analyze_comment_agreement(comments: list, post_title: str, post_selftext: str) -> dict:
     total_comments = len(comments)
     if total_comments == 0:
@@ -137,7 +146,7 @@ def analyze_comment_agreement(comments: list, post_title: str, post_selftext: st
         sentiment_label = "NEUTRAL"
         
         try:
-            # Model has a max sequence length, so we truncate
+            # model has a max inpt length, so we truncate
             sentiment_result = sentiment_analyzer(comment_text[:512])
             sentiment_label = sentiment_result[0]['label']
             sentiment_score = sentiment_result[0]['score']
@@ -176,9 +185,9 @@ def analyze_comment_agreement(comments: list, post_title: str, post_selftext: st
     disagreement_percentage = (negative_count / total_analyzed_comments) * 100
     neutral_percentage = (neutral_count / total_analyzed_comments) * 100
     
-    # Calculate sum to check for floating point inaccuracies
+    # make sure percentages r correct
     total_percentage = agreement_percentage + disagreement_percentage + neutral_percentage
-    # Adjust one percentage to ensure they sum to 100
+
     if abs(total_percentage - 100) > 0.01:
         if agreement_percentage > 0:
             agreement_percentage += (100 - total_percentage)
@@ -206,25 +215,40 @@ def analyze_comment_agreement(comments: list, post_title: str, post_selftext: st
         "comment_details": comment_summaries
     }
 
-def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_limit_per_post: int):
-    """
-    Fetches posts, processes them, and returns the data.
-    Also stores the data in the database.
-    """
-    if not reddit or not client:
+#does what its called as well as storing the data
+def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_limit_per_post: int, post_type: int):
+    if not reddit or not mongo_client:
         logging.error("PRAW or MongoDB client not initialized. Cannot process request.")
         return []
 
     logging.info(f"Fetching top {post_limit} posts from r/{subreddit_name}...")
     try:
+        #accounting for possible threads
+        post_limit+=1
+
+        #sorting type and default to hot
         subreddit = reddit.subreddit(subreddit_name)
-        submissions = list(subreddit.new(limit=post_limit))
+        if post_type == 1:
+            submissions = list(subreddit.hot(limit=post_limit))
+        elif post_type == 2:
+            submissions = list(subreddit.new(limit=post_limit))
+        elif post_type == 3:
+            submissions = list(subreddit.top(limit=post_limit))
+        elif post_type == 4:
+            submissions = list(subreddit.rising(limit=post_limit))
+        else:
+            submissions = list(subreddit.hot(limit=post_limit))
     except Exception as e:
         logging.error(f"Error fetching subreddit {subreddit_name}: {e}")
         return []
 
     processed_posts = []
     for submission in submissions:
+
+        #ignore pinned posts which are 99% of the time threads
+        if submission.stickied:
+            continue
+
         try:
             logging.info(f"Processing post: '{submission.title}' (ID: {submission.id})")
 
@@ -233,7 +257,7 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
                 logging.info(f"Post '{submission.title}' (ID: {submission.id}) already exists in the database. Skipping.")
                 continue
 
-            # Summarize the post title and selftext
+            # Summarize
             post_text_to_summarize = f"{submission.title}. {submission.selftext}" if submission.selftext else submission.title
             post_summary = summarize_text(post_text_to_summarize)
 
@@ -242,10 +266,9 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
             comments = [comment for comment in submission.comments.list() if isinstance(comment, praw.models.Comment)][:comment_limit_per_post]
             logging.info(f"Fetched {len(comments)} comments for post '{submission.title}'.")
 
-            # Analyze comments for summary and agreement
+            # Analyze comments
             comment_analysis_result = analyze_comment_agreement(comments, submission.title, submission.selftext)
 
-            # Prepare data for MongoDB and API response
             post_data = {
                 "post_id": submission.id,
                 "title": submission.title,
@@ -264,11 +287,9 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
                 "processed_at": datetime.now()
             }
 
-            # Store in MongoDB
             collection.insert_one(post_data)
             logging.info(f"Successfully stored post '{submission.title}' in MongoDB.")
 
-            # Append to the list to be returned by the function
             processed_posts.append(post_data)
 
         except Exception as e:
@@ -278,8 +299,12 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
     logging.info(f"Finished processing. Total {len(processed_posts)} new posts processed and stored.")
     return processed_posts
 
+#for testing obviously
+#try todays top 5 popular posts from worldnews along with 10 top comments
+#Fourth parameter - what sorting to use for top on posts
+#Hot,New, Top, Rising -> 1,2,3,4 respectively
 if __name__ == "__main__":
-    results = fetch_and_process_subreddit("news", 5, 10)
+    results = fetch_and_process_subreddit("worldnews", 5, 10, 1)
     logging.info("Standalone run complete. Processed posts:")
     for post in results:
         print(f"Title: {post['title']}")

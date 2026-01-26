@@ -1,3 +1,3 @@
 # Project-RediGo
 
-Reddit news summarizer
+ReadMe WIP
