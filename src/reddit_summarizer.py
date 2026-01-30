@@ -96,7 +96,7 @@ def summarize_text(text: str, default_max_length: int = 150, default_min_length:
         )
 
         response = genai_client.models.generate_content(
-            model="gemini-3-flash-preview",
+            model="gemini-2.5-flash",
             contents=prompt
         )
 
