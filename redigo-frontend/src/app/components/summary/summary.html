@@ -1,0 +1,79 @@
+<main class="container">
+  <header>
+    <div>
+      <p class="eyebrow">REDDIT, DISTILLED</p>
+      <h1>RediGo</h1>
+      <p class="intro">Fresh post summaries and the temperature of the discussion.</p>
+    </div>
+    <form (ngSubmit)="refresh()">
+      <label>
+        Subreddit
+        <input name="subreddit" [(ngModel)]="subreddit" [disabled]="refreshing" required>
+      </label>
+      <label>
+        Sort
+        <select name="sort" [(ngModel)]="sort" [disabled]="refreshing">
+          <option value="hot">Hot</option><option value="new">New</option>
+          <option value="top">Top</option><option value="rising">Rising</option>
+        </select>
+      </label>
+      <label>
+        Posts
+        <select name="postLimit" [(ngModel)]="postLimit" [disabled]="refreshing">
+          <option [ngValue]="5">5</option>
+          <option [ngValue]="10">10</option>
+          <option [ngValue]="15">15</option>
+          <option [ngValue]="25">25</option>
+        </select>
+      </label>
+      <button
+        type="button"
+        class="theme-toggle"
+        (click)="toggleDarkMode()"
+        [attr.aria-pressed]="darkMode"
+        [attr.aria-label]="darkMode ? 'Switch to light mode' : 'Switch to night mode'"
+        [title]="darkMode ? 'Light mode' : 'Night mode'"
+      >{{ darkMode ? '☀' : '☾' }}</button>
+      <button type="submit" [disabled]="refreshing">{{ refreshing ? 'Summarizing…' : 'Refresh' }}</button>
+    </form>
+  </header>
+
+  <p class="notice error" *ngIf="error">{{ error }}</p>
+  <p class="notice" *ngIf="message">{{ message }}</p>
+  <p class="notice" *ngIf="loading">Loading saved summaries…</p>
+
+  <section class="posts" *ngIf="!loading && posts.length">
+    <article class="post" *ngFor="let post of posts">
+      <div class="post-meta">r/{{ post.subreddit }} · u/{{ post.author }} · {{ post.created_utc | date:'mediumDate' }}</div>
+      <h2>{{ post.title }}</h2>
+      <p>{{ post.post_summary }}</p>
+      <div class="stats"><span>▲ {{ post.score }}</span><span>▢ {{ post.num_comments }} comments</span></div>
+      <div class="discussion">
+        <h3>Discussion</h3>
+        <p>{{ post.comments_summary }}</p>
+        <div class="sentiment" aria-label="Comment sentiment">
+          <span class="agree" [style.width.%]="post.comment_agreement_percentage"></span>
+          <span class="disagree" [style.width.%]="post.comment_disagreement_percentage"></span>
+          <span class="neutral" [style.width.%]="post.comment_neutral_percentage"></span>
+        </div>
+        <small>{{ post.comment_agreement_percentage }}% positive · {{ post.comment_disagreement_percentage }}% negative · {{ post.comment_neutral_percentage }}% neutral</small>
+      </div>
+      <a class="source-link" [href]="post.url" target="_blank" rel="noopener">View original post →</a>
+    </article>
+  </section>
+
+  <nav class="pagination" *ngIf="!loading && totalPages > 1" aria-label="Post pages">
+    <button type="button" (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1 || refreshing">Previous</button>
+    <button
+      type="button"
+      *ngFor="let page of pageNumbers"
+      (click)="goToPage(page)"
+      [class.current]="page === currentPage"
+      [attr.aria-current]="page === currentPage ? 'page' : null"
+      [disabled]="refreshing"
+    >{{ page }}</button>
+    <button type="button" (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages || refreshing">Next</button>
+  </nav>
+
+  <p class="empty" *ngIf="!loading && !posts.length && !error">No saved summaries yet. Choose a subreddit and refresh.</p>
+</main>

@@ -17,23 +17,23 @@ logging.getLogger("tensorflow").setLevel(logging.ERROR)
 
 
 from transformers import pipeline
-from google import genai
+import requests
 
 
 #load secret env variables
 load_dotenv()
 
-#initialize gemini
-genai_client = genai.Client(api_key=os.getenv("GOOGLE_AI_KEY"))
+# Local Ollama configuration.  It can be overridden without changing code.
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
+OLLAMA_TIMEOUT_SECONDS = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "180"))
 
 #initializing logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 #load model
 try:
-    logging.info("Loading Gemini model for summarization...")
-    #summarizer = client.models.get("gemini-1.5-flash")
-    logging.info("Gemini model loaded.")
+    logging.info(f"Using local Ollama model for summarization: {OLLAMA_MODEL}")
 
     sentiment_analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english",device=0)
     logging.info("Sentiment analysis model loaded.")
@@ -90,20 +90,26 @@ def summarize_text(text: str, default_max_length: int = 150, default_min_length:
             dynamic_min_length = max(10, dynamic_max_length - 10)
 
         prompt = (
-            f"Summarize the following text as a SHORT NEWS SUMMARY. "
-            f"Do NOT repeat the title verbatim. "
+            f"Write only a concise summary of the following text. "
+            f"Do NOT repeat the title verbatim or use an introduction such as 'Here is a summary'. "
             f"Keep it between {dynamic_min_length} and {dynamic_max_length} words.\n\n{text}"
         )
 
-        response = genai_client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
+        response = requests.post(
+            f"{OLLAMA_BASE_URL}/api/generate",
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0.2},
+            },
+            timeout=OLLAMA_TIMEOUT_SECONDS,
         )
-
-        return response.text.strip() if response and response.text else ""
+        response.raise_for_status()
+        return response.json().get("response", "").strip()
 
     except Exception as e:
-        logging.warning(f"Error summarizing text: {e}")
+        logging.warning(f"Error summarizing text with Ollama: {e}")
         return text
 
 
@@ -196,16 +202,18 @@ def analyze_comment_agreement(comments: list, post_title: str, post_selftext: st
         else:
             neutral_percentage += (100 - total_percentage)
 
-    overall_comment_summary = f"Out of {total_analyzed_comments} analyzed comments: {positive_count} positive, {negative_count} negative, {neutral_count} neutral. "
-
     if comment_summaries:
         top_comment_snippets = " ".join([c["summary"] for c in comment_summaries if c["summary"]][:5])
         if top_comment_snippets:
-            overall_comment_summary += summarize_text(f"Key themes from comments: {top_comment_snippets}", default_max_length=100, default_min_length=20)
+            overall_comment_summary = summarize_text(
+                f"Key discussion themes from Reddit comments: {top_comment_snippets}",
+                default_max_length=100,
+                default_min_length=20,
+            )
         else:
-            overall_comment_summary += "No specific themes identified from summaries."
+            overall_comment_summary = "No specific discussion themes identified."
     else:
-        overall_comment_summary += "No specific themes identified due to lack of comments."
+        overall_comment_summary = "No specific discussion themes identified due to lack of comments."
 
     return {
         "summary": overall_comment_summary,

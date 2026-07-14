@@ -1,0 +1,21 @@
+:host { display: block; min-height: 100vh; background: #f7f7f5; }
+:host.dark-mode { background: #121212; color: #ececec; }
+.container { max-width: 900px; margin: 0 auto; padding: 3rem 1.25rem; }
+header { display: flex; justify-content: space-between; gap: 2rem; align-items: end; border-bottom: 2px solid #111; padding-bottom: 1.5rem; }
+.eyebrow { letter-spacing: .12em; font-size: .72rem; font-weight: 700; margin: 0 0 .35rem; }
+h1 { font-size: 3.25rem; line-height: 1; margin: 0; letter-spacing: -.07em; }
+.intro { color: #555; margin: .7rem 0 0; }
+form { display: flex; align-items: end; gap: .6rem; flex-wrap: wrap; }
+label { display: grid; gap: .25rem; font-size: .75rem; font-weight: 700; }
+input, select, button { font: inherit; border: 1px solid #222; padding: .55rem .65rem; background: white; }
+input { width: 9rem; } button { cursor: pointer; background: #111; color: #fff; font-weight: 700; } button:disabled { opacity: .55; cursor: wait; }
+.notice, .empty { padding: 1rem; background: #fff; border: 1px solid #ddd; margin: 1.5rem 0; }.error { border-color: #bd3434; color: #941f1f; }
+.posts { display: grid; gap: 1rem; margin-top: 1.5rem; }.post { background: #fff; border: 1px solid #ddd; padding: 1.4rem; }.post-meta, small { color: #666; font-size: .8rem; }
+h2 { font-size: 1.35rem; margin: .45rem 0 .7rem; line-height: 1.2; }
+.post > p, .discussion p { line-height: 1.55; margin: 0; }.stats { display: flex; gap: 1rem; font-size: .85rem; font-weight: 700; margin-top: 1rem; }.discussion { background: #f4f4f2; padding: 1rem; margin-top: 1.25rem; }.discussion h3 { margin: 0 0 .45rem; font-size: 1rem; }
+.sentiment { height: .45rem; display: flex; overflow: hidden; margin: .85rem 0 .35rem; border-radius: 1rem; background: #d1d1d1; }.sentiment span { display: block; }.agree { background: #3f8c58; }.disagree { background: #c54b4b; }.neutral { background: #888; }
+.source-link { display: inline-block; color: #1769aa; background: transparent; border: 0; padding: 0; margin-top: 1rem; font-weight: 600; text-decoration: underline; }.source-link:hover, .source-link:focus { color: #0d4775; background: transparent; }
+.theme-toggle { width: 2.35rem; height: 2.35rem; padding: 0; display: grid; place-items: center; font-size: 1.25rem; line-height: 1; }
+.pagination { display: flex; justify-content: center; gap: .4rem; flex-wrap: wrap; margin-top: 1.5rem; }.pagination button { background: #fff; color: #111; min-width: 2.4rem; }.pagination button:hover:not(:disabled), .pagination button.current { background: #111; color: #fff; }.pagination button:disabled { cursor: not-allowed; opacity: .45; }
+:host.dark-mode header { border-color: #d8d8d8; }:host.dark-mode .intro, :host.dark-mode .post-meta, :host.dark-mode small { color: #b8b8b8; }:host.dark-mode input, :host.dark-mode select { background: #222; color: #f4f4f4; border-color: #aaa; }:host.dark-mode .post, :host.dark-mode .notice, :host.dark-mode .empty { background: #1d1d1d; border-color: #454545; }:host.dark-mode .discussion { background: #292929; }:host.dark-mode .pagination button { background: #252525; color: #f4f4f4; border-color: #888; }:host.dark-mode .pagination button:hover:not(:disabled), :host.dark-mode .pagination button.current { background: #f4f4f4; color: #111; }:host.dark-mode .source-link { color: #73b9ef; }:host.dark-mode .source-link:hover, :host.dark-mode .source-link:focus { color: #acd9fa; }
+@media (max-width: 650px) { header { display: block; } form { margin-top: 1.5rem; } }

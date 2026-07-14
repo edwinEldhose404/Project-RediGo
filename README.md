@@ -1,3 +1,0 @@
-# Project-RediGo
-
-ReadMe WIP
