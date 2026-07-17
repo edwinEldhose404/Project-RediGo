@@ -233,38 +233,46 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
         logging.error("PRAW or MongoDB client not initialized. Cannot process request.")
         return []
 
-    logging.info(f"Fetching top {post_limit} posts from r/{subreddit_name}...")
-    try:
-        #accounting for possible threads
-        post_limit+=1
+    logging.info(f"Fetching {post_limit} posts from r/{subreddit_name}...")
 
-        #sorting type and default to hot
+    try:
+        # Fetch extra posts to account for stickied posts, duplicates, failures, etc.
+        fetch_limit = post_limit * 3
+
         subreddit = reddit.subreddit(subreddit_name)
+
         if post_type == 1:
-            submissions = list(subreddit.hot(limit=post_limit))
+            submissions = list(subreddit.hot(limit=fetch_limit))
         elif post_type == 2:
-            submissions = list(subreddit.new(limit=post_limit))
+            submissions = list(subreddit.new(limit=fetch_limit))
         elif post_type == 3:
-            submissions = list(subreddit.top(limit=post_limit))
+            submissions = list(subreddit.top(limit=fetch_limit))
         elif post_type == 4:
-            submissions = list(subreddit.rising(limit=post_limit))
+            submissions = list(subreddit.rising(limit=fetch_limit))
         else:
-            submissions = list(subreddit.hot(limit=post_limit))
+            submissions = list(subreddit.hot(limit=fetch_limit))
+
     except Exception as e:
         logging.error(f"Error fetching subreddit {subreddit_name}: {e}")
         return []
 
     processed_posts = []
+
     for submission in submissions:
 
+        # Stop once we've processed enough posts
+        if len(processed_posts) >= post_limit:
+            break
+
         if submission.stickied:
+            logging.info(f"Skipping stickied post: {submission.title}")
             continue
 
         try:
             logging.info(f"Processing post: '{submission.title}' (ID: {submission.id})")
 
             if collection.find_one({"post_id": submission.id}):
-                logging.info(f"Post '{submission.title}' (ID: {submission.id}) already exists in the database. Skipping.")
+                logging.info(f"Post '{submission.title}' already exists. Skipping.")
                 continue
 
             # Summarize post
@@ -283,17 +291,24 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
             # Fetch comments
             submission.comments.replace_more(limit=0)
 
-            comments = [
+            all_comments = [
                 comment
                 for comment in submission.comments.list()
                 if isinstance(comment, praw.models.Comment)
-            ][:comment_limit_per_post]
+            ]
+
+            # Sort by score so we use the highest-voted comments
+            comments = sorted(
+                all_comments,
+                key=lambda c: c.score,
+                reverse=True
+            )[:comment_limit_per_post]
 
             if not comments:
                 logging.warning(f"No comments found for '{submission.title}'. Skipping.")
                 continue
 
-            logging.info(f"Fetched {len(comments)} comments for post '{submission.title}'.")
+            logging.info(f"Fetched {len(comments)} top comments for '{submission.title}'.")
 
             # Analyze comments
             comment_analysis_result = analyze_comment_agreement(
@@ -309,9 +324,7 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
                 or comment_analysis_result.get("disagreement_percentage") is None
                 or comment_analysis_result.get("neutral_percentage") is None
             ):
-                logging.warning(
-                    f"Comment analysis failed for '{submission.title}'. Skipping."
-                )
+                logging.warning(f"Comment analysis failed for '{submission.title}'. Skipping.")
                 continue
 
             post_data = {
@@ -333,7 +346,10 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
             }
 
             collection.insert_one(post_data)
-            logging.info(f"Successfully stored post '{submission.title}' in MongoDB.")
+
+            logging.info(
+                f"Successfully stored post {len(processed_posts)+1}/{post_limit}: '{submission.title}'"
+            )
 
             processed_posts.append(post_data)
 
@@ -344,7 +360,10 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
             )
             continue
 
-    logging.info(f"Finished processing. Total {len(processed_posts)} new posts processed and stored.")
+    logging.info(
+        f"Finished processing. Successfully stored {len(processed_posts)} posts."
+    )
+
     return processed_posts
 
 #for testing obviously
