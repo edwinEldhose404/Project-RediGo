@@ -348,11 +348,11 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
     return processed_posts
 
 #for testing obviously
-#try todays top 5 popular posts from worldnews along with 10 top comments
+#try todays top 10 popular posts from worldnews along with 10 top comments
 #Fourth parameter - what sorting to use for top on posts
 #Hot,New, Top, Rising -> 1,2,3,4 respectively
 if __name__ == "__main__":
-    results = fetch_and_process_subreddit("worldnews", 5, 10, 1)
+    results = fetch_and_process_subreddit("worldnews", 10, 10, 1)
     logging.info("Standalone run complete. Processed posts:")
     for post in results:
         print(f"Title: {post['title']}")
