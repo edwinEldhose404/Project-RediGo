@@ -17,26 +17,29 @@ logging.getLogger("tensorflow").setLevel(logging.ERROR)
 
 
 from transformers import pipeline
-import requests
+from google import genai
 
 
 #load secret env variables
 load_dotenv()
 
-# Local Ollama configuration.  It can be overridden without changing code.
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
-OLLAMA_TIMEOUT_SECONDS = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "180"))
+# Local Gemini configuration
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+GEMINI_MODEL = "gemini-2.5-flash"
 
 #initializing logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 #load model
 try:
-    logging.info(f"Using local Ollama model for summarization: {OLLAMA_MODEL}")
+    logging.info(f"Using Gemini model: {GEMINI_MODEL}")
 
-    sentiment_analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english",device=0)
-    logging.info("Sentiment analysis model loaded.")
+    sentiment_analyzer = pipeline(
+        "sentiment-analysis",
+        model="distilbert-base-uncased-finetuned-sst-2-english"
+    )
     
 except Exception as e:
     logging.error(f"Error loading models: {e}. Ensure you have an active internet connection or download models locally.")
@@ -57,8 +60,8 @@ except Exception as e:
 
 #Initialize Mongo
 try:
-    mongo_client = MongoClient("mongodb://localhost:27017/")
-    db = mongo_client["redigo_base"]
+    mongo_client = MongoClient(os.getenv("MONGO_URI"))
+    db = mongo_client["redigo"]
     collection = db["redigo1"]
     # Force a connection check
     mongo_client.server_info()
@@ -69,47 +72,49 @@ except Exception as e:
     collection = None
 
 #summarize text function
-def summarize_text(text: str, default_max_length: int = 150, default_min_length: int = 50) -> str:
+def summarize_text(text: str,
+                   default_max_length: int = 150,
+                   default_min_length: int = 50) -> str:
+
     if not text:
         return ""
 
-    text_words = text.strip().split()
-    text_len_words = len(text_words)
+    words = text.split()
 
-    if text_len_words < default_min_length // 2:
+    if len(words) < default_min_length // 2:
         return text.strip()
 
     try:
-        if len(text) > 10000:
-            text = text[:10000]
 
-        dynamic_max_length = min(max(int(text_len_words * 0.75), default_min_length), default_max_length)
-        dynamic_min_length = min(max(int(text_len_words * 0.25), 10), dynamic_max_length - 5)
+        prompt = f"""
+You are summarizing Reddit discussions.
 
-        if dynamic_min_length >= dynamic_max_length:
-            dynamic_min_length = max(10, dynamic_max_length - 10)
+Write a concise summary.
 
-        prompt = (
-            f"Write only a concise summary of the following text. "
-            f"Do NOT repeat the title verbatim or use an introduction such as 'Here is a summary'. "
-            f"Keep it between {dynamic_min_length} and {dynamic_max_length} words.\n\n{text}"
+Requirements:
+
+- Mention only the important ideas.
+- Merge similar opinions together.
+- Ignore jokes and low-effort comments.
+- Do not mention usernames.
+- Do not say "Here is the summary."
+- Return only the summary.
+- Keep between {default_min_length} and {default_max_length} words.
+
+TEXT:
+
+{text}
+"""
+
+        response = gemini_client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt
         )
 
-        response = requests.post(
-            f"{OLLAMA_BASE_URL}/api/generate",
-            json={
-                "model": OLLAMA_MODEL,
-                "prompt": prompt,
-                "stream": False,
-                "options": {"temperature": 0.2},
-            },
-            timeout=OLLAMA_TIMEOUT_SECONDS,
-        )
-        response.raise_for_status()
-        return response.json().get("response", "").strip()
+        return response.text.strip()
 
     except Exception as e:
-        logging.warning(f"Error summarizing text with Ollama: {e}")
+        logging.warning(f"Gemini summarization failed: {e}")
         return text
 
 
@@ -146,10 +151,6 @@ def analyze_comment_agreement(comments: list, post_title: str, post_selftext: st
         if not comment_text or comment_text == '[deleted]' or comment_text == '[removed]':
             continue
         
-        comment_summary = summarize_text(comment_text, default_max_length=50, default_min_length=10)
-        
-        sentiment_score = 0.0
-        sentiment_label = "NEUTRAL"
         
         try:
             # model has a max inpt length, so we truncate
@@ -171,8 +172,8 @@ def analyze_comment_agreement(comments: list, post_title: str, post_selftext: st
             "id": comment.id,
             "author": str(comment.author),
             "score": comment.score,
-            "original_text_snippet": comment_text[:200] + "..." if len(comment_text) > 200 else comment_text,
-            "summary": comment_summary,
+            "original_text_snippet":
+                comment_text[:500] if len(comment_text) > 500 else comment_text,
             "sentiment_label": sentiment_label,
             "sentiment_score": sentiment_score
         })
@@ -203,17 +204,20 @@ def analyze_comment_agreement(comments: list, post_title: str, post_selftext: st
             neutral_percentage += (100 - total_percentage)
 
     if comment_summaries:
-        top_comment_snippets = " ".join([c["summary"] for c in comment_summaries if c["summary"]][:5])
-        if top_comment_snippets:
-            overall_comment_summary = summarize_text(
-                f"Key discussion themes from Reddit comments: {top_comment_snippets}",
-                default_max_length=100,
-                default_min_length=20,
-            )
-        else:
-            overall_comment_summary = "No specific discussion themes identified."
+
+        combined_comments = "\n\n".join(
+            c["original_text_snippet"]
+            for c in comment_summaries
+        )
+
+        overall_comment_summary = summarize_text(
+            combined_comments,
+            default_max_length=120,
+            default_min_length=40,
+        )
+
     else:
-        overall_comment_summary = "No specific discussion themes identified due to lack of comments."
+        overall_comment_summary = "No comments available."
 
     return {
         "summary": overall_comment_summary,
