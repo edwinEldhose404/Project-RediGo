@@ -115,7 +115,7 @@ TEXT:
 
     except Exception as e:
         logging.warning(f"Gemini summarization failed: {e}")
-        return text
+        return None
 
 
 
@@ -257,29 +257,62 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
     processed_posts = []
     for submission in submissions:
 
-        #ignore pinned posts which are 99% of the time threads
         if submission.stickied:
             continue
 
         try:
             logging.info(f"Processing post: '{submission.title}' (ID: {submission.id})")
 
-            # Check if post already exists in the database
             if collection.find_one({"post_id": submission.id}):
                 logging.info(f"Post '{submission.title}' (ID: {submission.id}) already exists in the database. Skipping.")
                 continue
 
-            # Summarize
-            post_text_to_summarize = f"{submission.title}. {submission.selftext}" if submission.selftext else submission.title
+            # Summarize post
+            post_text_to_summarize = (
+                f"{submission.title}. {submission.selftext}"
+                if submission.selftext
+                else submission.title
+            )
+
             post_summary = summarize_text(post_text_to_summarize)
+
+            if not post_summary:
+                logging.warning(f"Post summarization failed for '{submission.title}'. Skipping.")
+                continue
 
             # Fetch comments
             submission.comments.replace_more(limit=0)
-            comments = [comment for comment in submission.comments.list() if isinstance(comment, praw.models.Comment)][:comment_limit_per_post]
+
+            comments = [
+                comment
+                for comment in submission.comments.list()
+                if isinstance(comment, praw.models.Comment)
+            ][:comment_limit_per_post]
+
+            if not comments:
+                logging.warning(f"No comments found for '{submission.title}'. Skipping.")
+                continue
+
             logging.info(f"Fetched {len(comments)} comments for post '{submission.title}'.")
 
             # Analyze comments
-            comment_analysis_result = analyze_comment_agreement(comments, submission.title, submission.selftext)
+            comment_analysis_result = analyze_comment_agreement(
+                comments,
+                submission.title,
+                submission.selftext
+            )
+
+            if (
+                not comment_analysis_result
+                or not comment_analysis_result.get("summary")
+                or comment_analysis_result.get("agreement_percentage") is None
+                or comment_analysis_result.get("disagreement_percentage") is None
+                or comment_analysis_result.get("neutral_percentage") is None
+            ):
+                logging.warning(
+                    f"Comment analysis failed for '{submission.title}'. Skipping."
+                )
+                continue
 
             post_data = {
                 "post_id": submission.id,
@@ -305,7 +338,10 @@ def fetch_and_process_subreddit(subreddit_name: str, post_limit: int, comment_li
             processed_posts.append(post_data)
 
         except Exception as e:
-            logging.error(f"Error processing post ID {submission.id} ('{submission.title}'): {e}", exc_info=True)
+            logging.error(
+                f"Error processing post ID {submission.id} ('{submission.title}'): {e}",
+                exc_info=True
+            )
             continue
 
     logging.info(f"Finished processing. Total {len(processed_posts)} new posts processed and stored.")
