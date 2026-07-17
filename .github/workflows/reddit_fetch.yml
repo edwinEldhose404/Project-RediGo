@@ -43,4 +43,4 @@ jobs:
           MONGO_URI: ${{ secrets.MONGO_URI }}
 
         run: |
-          python reddit_summarizer.py
+          python src/reddit_summarizer.py
