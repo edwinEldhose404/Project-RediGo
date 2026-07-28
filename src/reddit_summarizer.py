@@ -8,10 +8,10 @@ from dotenv import load_dotenv
 import os
 
 #hide tensorflow warnings
-import warnings
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-warnings.filterwarnings("ignore", category=FutureWarning)
+# import warnings
+# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+# warnings.filterwarnings("ignore", category=DeprecationWarning)
+# warnings.filterwarnings("ignore", category=FutureWarning)
 
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 

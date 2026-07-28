@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+
+  backend:
+    build: ./src
+    container_name: redigo-backend
+
+    ports:
+      - "8000:8000"
+
+    env_file:
+      - .env
+
+    restart: unless-stopped
+
+  frontend:
+    build: ./redigo-frontend
+    container_name: redigo-frontend
+
+    ports:
+      - "4200:80"
+
+    depends_on:
+      - backend
+
+    restart: unless-stopped
